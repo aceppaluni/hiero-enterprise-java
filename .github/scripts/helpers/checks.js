@@ -116,7 +116,8 @@ async function checkMergeConflict(botContext) {
   }
 
   if (!mergeableResolved) {
-    logger.log('Merge conflict check: mergeable never resolved after retries, assuming no conflicts');
+    logger.log('Merge conflict check: mergeable never resolved after retries');
+    return { passed: false, reason: 'mergeable_unresolved' };
   }
   logger.log(`Merge conflict check: ${conflicts ? 'has conflicts' : 'no conflicts'}`);
   return { passed: !conflicts };
