@@ -25,7 +25,6 @@ public record Node(
     @Nullable Long rewardRateStart,
     boolean declineReward,
     @Nullable String fileId,
-    long stakingPeriod,
     @NonNull Instant stakingPeriodFrom,
     @Nullable Instant stakingPeriodTo,
     @NonNull TimestampRange timestamp,
