@@ -25,11 +25,13 @@ public record Node(
     boolean declineReward,
     @Nullable String fileId,
     long stakingPeriod,
+    @NonNull Instant stakingPeriodFrom,
+    @Nullable Instant stakingPeriodTo,
     @NonNull TimestampRange timestamp,
-    @NonNull List<ServiceEndpoint> serviceEndpoints) {
+    @NonNull List<ServiceEndpoint> serviceEndpoints,
+    @Nullable ServiceEndpoint grpcProxyEndpoint) {
 
   public Node {
-    Objects.requireNonNull(nodeAccountId, "nodeAccountId must not be null");
     Objects.requireNonNull(timestamp, "timestamp must not be null");
     Objects.requireNonNull(serviceEndpoints, "serviceEndpoints must not be null");
   }

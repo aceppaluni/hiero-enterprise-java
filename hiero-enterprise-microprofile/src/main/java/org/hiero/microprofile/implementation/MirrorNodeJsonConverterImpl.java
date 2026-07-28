@@ -1047,7 +1047,22 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
     try {
       final long nodeId = jsonObject.getJsonNumber("node_id").longValue();
 
-      final AccountId nodeAccountId = AccountId.fromString(jsonObject.getString("node_account_id"));
+      final AccountId nodeAccountId =
+          jsonObject.containsKey("node_account_id")
+              ? AccountId.fromString(jsonObject.getString("node_account_id"))
+              : null;
+
+      final JsonObject stakingPeriod = jsonObject.getJsonObject("staking_period");
+
+      final Instant stakingPeriodFrom =
+          stakingPeriod != null && stakingPeriod.containsKey("from")
+              ? parseInstant(stakingPeriod.getString("from"))
+              : null;
+
+      final Instant stakingPeriodTo =
+          stakingPeriod != null && stakingPeriod.containsKey("to")
+              ? parseInstant(stakingPeriod.getString("to"))
+              : null;
 
       final List<Node.ServiceEndpoint> serviceEndpoints =
           jsonArrayToStream(jsonObject.getJsonArray("service_endpoints"))
@@ -1058,6 +1073,15 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
                           endpoint.asJsonObject().getInt("port"),
                           endpoint.asJsonObject().getString("domain_name", null)))
               .toList();
+
+      final Node.ServiceEndpoint grpcProxyEndpoint =
+          jsonObject.containsKey("grpc_proxy_endpoint")
+                  && jsonObject.getJsonObject("grpc_proxy_endpoint") != null
+              ? new Node.ServiceEndpoint(
+                  jsonObject.getJsonObject("grpc_proxy_endpoint").getString("ip_address", null),
+                  jsonObject.getJsonObject("grpc_proxy_endpoint").getInt("port"),
+                  jsonObject.getJsonObject("grpc_proxy_endpoint").getString("domain_name", null))
+              : null;
 
       return Optional.of(
           new Node(
@@ -1080,11 +1104,13 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               jsonObject.getJsonNumber("reward_rate_start").longValue(),
               jsonObject.getBoolean("decline_reward"),
               getNullableString(jsonObject, "file_id").orElse(null),
-              jsonObject.getJsonNumber("staking_period").longValue(),
+              stakingPeriodFrom,
+              stakingPeriodTo,
               new TimestampRange(
                   parseInstant(jsonObject.getString("timestamp_from", "")),
                   parseInstant(jsonObject.getString("timestamp_to", ""))),
-              serviceEndpoints));
+              serviceEndpoints,
+              grpcProxyEndpoint));
     } catch (final Exception e) {
       throw new IllegalStateException("Can not parse JSON: " + jsonObject, e);
     }

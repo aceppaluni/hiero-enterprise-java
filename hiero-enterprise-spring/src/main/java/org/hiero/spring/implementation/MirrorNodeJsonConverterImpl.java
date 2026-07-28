@@ -993,6 +993,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
 
     try {
       final long nodeId = node.get("node_id").asLong();
+
       final AccountId nodeAccountId =
           node.hasNonNull("node_account_id")
               ? AccountId.fromString(node.get("node_account_id").asText())
@@ -1014,14 +1015,39 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
                   .toList()
               : List.of();
 
+      final Node.ServiceEndpoint grpcProxyEndpoint =
+          node.has("grpc_proxy_endpoint") && !node.get("grpc_proxy_endpoint").isNull()
+              ? new Node.ServiceEndpoint(
+                  node.get("grpc_proxy_endpoint").hasNonNull("ip_address_v4")
+                      ? node.get("grpc_proxy_endpoint").get("ip_address_v4").asText()
+                      : null,
+                  node.get("grpc_proxy_endpoint").get("port").asInt(),
+                  node.get("grpc_proxy_endpoint").hasNonNull("domain_name")
+                      ? node.get("grpc_proxy_endpoint").get("domain_name").asText()
+                      : null)
+              : null;
+
       final JsonNode timestampNode = node.get("timestamp");
       final Instant fromTimestamp =
           timestampNode != null && timestampNode.hasNonNull("from")
               ? parseInstant(timestampNode.get("from").asText())
               : null;
+
       final Instant toTimestamp =
           timestampNode != null && timestampNode.hasNonNull("to")
               ? parseInstant(timestampNode.get("to").asText())
+              : null;
+
+      final JsonNode stakingPeriodNode = node.get("staking_period");
+
+      final Instant stakingPeriodFrom =
+          stakingPeriodNode != null && stakingPeriodNode.hasNonNull("from")
+              ? parseInstant(stakingPeriodNode.get("from").asText())
+              : null;
+
+      final Instant stakingPeriodTo =
+          stakingPeriodNode != null && stakingPeriodNode.hasNonNull("to")
+              ? parseInstant(stakingPeriodNode.get("to").asText())
               : null;
 
       return Optional.of(
@@ -1043,9 +1069,11 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               node.hasNonNull("reward_rate_start") ? node.get("reward_rate_start").asLong() : null,
               node.has("decline_reward") && node.get("decline_reward").asBoolean(),
               node.hasNonNull("file_id") ? node.get("file_id").asText() : null,
-              node.has("staking_period") ? node.get("staking_period").asLong() : 0L,
+              stakingPeriodFrom,
+              stakingPeriodTo,
               new TimestampRange(fromTimestamp, toTimestamp),
-              serviceEndpoints));
+              serviceEndpoints,
+              grpcProxyEndpoint));
     } catch (final Exception e) {
       throw new JsonParseException(node, e);
     }
