@@ -34,6 +34,7 @@ public record Node(
   public Node {
     Objects.requireNonNull(timestamp, "timestamp must not be null");
     Objects.requireNonNull(serviceEndpoints, "serviceEndpoints must not be null");
+    Objects.requireNonNull(stakingPeriodFrom, "stakingPeriodFrom must not be null");
   }
 
   /** Represents a node service endpoint. */

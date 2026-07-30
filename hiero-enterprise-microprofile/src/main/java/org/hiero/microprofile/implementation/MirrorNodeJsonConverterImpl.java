@@ -1048,7 +1048,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
       final long nodeId = jsonObject.getJsonNumber("node_id").longValue();
 
       final AccountId nodeAccountId =
-          jsonObject.containsKey("node_account_id")
+          jsonObject.containsKey("node_account_id") && !jsonObject.isNull("node_account_id")
               ? AccountId.fromString(jsonObject.getString("node_account_id"))
               : null;
 
@@ -1060,7 +1060,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               : null;
 
       final Instant stakingPeriodTo =
-          stakingPeriod != null && stakingPeriod.containsKey("to")
+          stakingPeriod != null && stakingPeriod.containsKey("to") && !stakingPeriod.isNull("to")
               ? parseInstant(stakingPeriod.getString("to"))
               : null;
 
@@ -1089,10 +1089,10 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               nodeAccountId,
               getNullableString(jsonObject, "description").orElse(null),
               getNullableString(jsonObject, "memo").orElse(null),
-              jsonObject.containsKey("public_key")
+              jsonObject.containsKey("public_key") && !jsonObject.isNull("public_key")
                   ? parseKey(jsonObject.getJsonObject("public_key"))
                   : null,
-              jsonObject.containsKey("admin_key")
+              jsonObject.containsKey("admin_key") && !jsonObject.isNull("admin_key")
                   ? parseKey(jsonObject.getJsonObject("admin_key"))
                   : null,
               getNullableString(jsonObject, "node_cert_hash").orElse(null),
