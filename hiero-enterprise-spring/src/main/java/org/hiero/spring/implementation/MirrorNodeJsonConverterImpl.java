@@ -52,6 +52,7 @@ import org.hiero.base.data.Transfer;
 import org.hiero.base.implementation.MirrorNodeJsonConverter;
 import org.hiero.base.protocol.data.TransactionType;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<JsonNode> {
 
@@ -966,6 +967,26 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
     return Instant.ofEpochSecond(seconds, nanos);
   }
 
+  private @Nullable Key parsePublicKey(@NonNull JsonNode node) {
+    Objects.requireNonNull(node);
+
+    try {
+      String key = node.asText();
+
+      if (key.startsWith("0x")) {
+        key = key.substring(2);
+      }
+
+      byte[] bytes = HexFormat.of().parseHex(key);
+
+      return Key.fromBytes(bytes);
+
+    } catch (Exception e) {
+      // Mirror Node public_key can be RSA DER, not a Hedera Key
+      return null;
+    }
+  }
+
   @Override
   public @NonNull List<Node> toNodes(@NonNull JsonNode node) {
     Objects.requireNonNull(node, "node must not be null");
@@ -1056,7 +1077,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               nodeAccountId,
               node.hasNonNull("description") ? node.get("description").asText() : null,
               node.hasNonNull("memo") ? node.get("memo").asText() : null,
-              node.hasNonNull("public_key") ? parseKey(node.get("public_key")) : null,
+              node.hasNonNull("public_key") ? parsePublicKey(node.get("public_key")) : null,
               node.hasNonNull("admin_key") ? parseKey(node.get("admin_key")) : null,
               node.hasNonNull("node_cert_hash") ? node.get("node_cert_hash").asText() : null,
               node.hasNonNull("stake") ? node.get("stake").asLong() : null,
