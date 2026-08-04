@@ -14,7 +14,7 @@ public record Node(
     @Nullable AccountId nodeAccountId,
     @Nullable String description,
     @Nullable String memo,
-    @Nullable Key publicKey,
+    @Nullable String publicKey,
     @Nullable Key adminKey,
     @Nullable String nodeCertHash,
     @Nullable Long stake,

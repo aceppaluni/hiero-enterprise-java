@@ -1077,7 +1077,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               nodeAccountId,
               node.hasNonNull("description") ? node.get("description").asText() : null,
               node.hasNonNull("memo") ? node.get("memo").asText() : null,
-              node.hasNonNull("public_key") ? parsePublicKey(node.get("public_key")) : null,
+              node.hasNonNull("public_key") ? node.get("public_key").asText() : null,
               node.hasNonNull("admin_key") ? parseKey(node.get("admin_key")) : null,
               node.hasNonNull("node_cert_hash") ? node.get("node_cert_hash").asText() : null,
               node.hasNonNull("stake") ? node.get("stake").asLong() : null,

@@ -1090,18 +1090,31 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               getNullableString(jsonObject, "description").orElse(null),
               getNullableString(jsonObject, "memo").orElse(null),
               jsonObject.containsKey("public_key") && !jsonObject.isNull("public_key")
-                  ? parseKey(jsonObject.getJsonObject("public_key"))
+                  ? jsonObject.getString("public_key")
                   : null,
               jsonObject.containsKey("admin_key") && !jsonObject.isNull("admin_key")
                   ? parseKey(jsonObject.getJsonObject("admin_key"))
                   : null,
               getNullableString(jsonObject, "node_cert_hash").orElse(null),
-              jsonObject.getJsonNumber("stake").longValue(),
-              jsonObject.getJsonNumber("min_stake").longValue(),
-              jsonObject.getJsonNumber("max_stake").longValue(),
-              jsonObject.getJsonNumber("stake_rewarded").longValue(),
-              jsonObject.getJsonNumber("stake_not_rewarded").longValue(),
-              jsonObject.getJsonNumber("reward_rate_start").longValue(),
+              jsonObject.containsKey("stake") && !jsonObject.isNull("stake")
+                  ? jsonObject.getJsonNumber("stake").longValue()
+                  : null,
+              jsonObject.containsKey("min_stake") && !jsonObject.isNull("min_stake")
+                  ? jsonObject.getJsonNumber("min_stake").longValue()
+                  : null,
+              jsonObject.containsKey("max_stake") && !jsonObject.isNull("max_stake")
+                  ? jsonObject.getJsonNumber("max_stake").longValue()
+                  : null,
+              jsonObject.containsKey("stake_rewarded") && !jsonObject.isNull("stake_rewarded")
+                  ? jsonObject.getJsonNumber("stake_rewarded").longValue()
+                  : null,
+              jsonObject.containsKey("stake_not_rewarded")
+                      && !jsonObject.isNull("stake_not_rewarded")
+                  ? jsonObject.getJsonNumber("stake_not_rewarded").longValue()
+                  : null,
+              jsonObject.containsKey("reward_rate_start") && !jsonObject.isNull("reward_rate_start")
+                  ? jsonObject.getJsonNumber("reward_rate_start").longValue()
+                  : null,
               jsonObject.getBoolean("decline_reward"),
               getNullableString(jsonObject, "file_id").orElse(null),
               stakingPeriodFrom,
