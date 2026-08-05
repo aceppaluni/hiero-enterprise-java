@@ -8,6 +8,7 @@ import org.hiero.base.data.NetworkFee;
 import org.hiero.base.data.NetworkStake;
 import org.hiero.base.data.NetworkSupplies;
 import org.hiero.base.data.Node;
+import org.hiero.base.mirrornode.MirrorNodeClient;
 import org.hiero.base.mirrornode.NetworkRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -18,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest(classes = HieroTestConfig.class)
 public class NetworkRepositoryTest {
   @Autowired private NetworkRepository networkRepository;
+  @Autowired private MirrorNodeClient mirrorNodeClient;
 
   @Test
   void findExchangeRates() throws HieroException {
