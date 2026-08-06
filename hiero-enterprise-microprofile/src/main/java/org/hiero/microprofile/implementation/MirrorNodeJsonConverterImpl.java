@@ -1027,10 +1027,13 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
       return List.of();
     }
 
-    final JsonArray nodes = jsonObject.getJsonArray("nodes");
-    if (nodes == null) {
-      throw new IllegalArgumentException("Nodes array is not an array: " + nodes);
+    final JsonValue jsonValue = jsonObject.get("nodes");
+
+    if (jsonValue == null || jsonValue.getValueType() != JsonValue.ValueType.ARRAY) {
+      throw new IllegalArgumentException("Nodes JSON value is not an array: " + jsonValue);
     }
+
+    final JsonArray nodes = jsonValue.asJsonArray();
 
     return jsonArrayToStream(nodes)
         .map(n -> toNode(n.asJsonObject()))
