@@ -1,5 +1,6 @@
 package org.hiero.base.test;
 
+import com.hedera.hashgraph.sdk.Status;
 import com.hedera.hashgraph.sdk.TokenId;
 import com.hedera.hashgraph.sdk.TokenType;
 import org.hiero.base.implementation.ProtocolLayerClientImpl;
@@ -11,6 +12,8 @@ import org.hiero.base.protocol.data.TokenDeleteRequest;
 import org.hiero.base.protocol.data.TokenDeleteResult;
 import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
+import org.hiero.base.protocol.data.TokenUpdateRequest;
+import org.hiero.base.protocol.data.TokenUpdateResult;
 import org.hiero.base.test.config.HieroTestContext;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,5 +84,31 @@ public class ProtocolLayerClientTokenTests {
     // then
     Assertions.assertNotNull(tokenDeleteResult);
     Assertions.assertNotNull(tokenDeleteResult.transactionId());
+  }
+
+  @Test
+  void testUpdateNftType() throws Exception {
+    // given
+    final TokenCreateRequest tokenCreateRequest =
+        TokenCreateRequest.of(
+            "Update NFT",
+            "UPD",
+            TokenType.NON_FUNGIBLE_UNIQUE,
+            hieroTestContext.getOperatorAccount());
+    final TokenCreateResult tokenCreateResult =
+        protocolLayerClient.executeTokenCreateTransaction(tokenCreateRequest);
+    final TokenId tokenId = tokenCreateResult.tokenId();
+
+    // when
+    final TokenUpdateRequest tokenUpdateRequest =
+        TokenUpdateRequest.of(
+            tokenId, hieroTestContext.getOperatorAccount().privateKey(), "Updated NFT", "UNFT");
+    final TokenUpdateResult tokenUpdateResult =
+        protocolLayerClient.executeTokenUpdateTransaction(tokenUpdateRequest);
+
+    // then
+    Assertions.assertNotNull(tokenUpdateResult);
+    Assertions.assertNotNull(tokenUpdateResult.transactionId());
+    Assertions.assertEquals(Status.SUCCESS, tokenUpdateResult.status());
   }
 }
