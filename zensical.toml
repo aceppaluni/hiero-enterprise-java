@@ -44,6 +44,10 @@ nav = [
             { "ContractCallResult" = "utils/contract-call-result.md" },
             { "ContractVerificationClient" = "utils/contract-verification-client.md" }
         ]}
+    ]},
+    { "Testing" = [
+        { "Testing Guide" = "testing-forks.md" },
+        { "Fuzz Testing" = "fuzzing.md" }
     ]}
 ]
 
