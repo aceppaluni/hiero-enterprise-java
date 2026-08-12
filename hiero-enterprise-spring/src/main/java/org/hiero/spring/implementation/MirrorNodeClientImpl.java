@@ -44,8 +44,24 @@ public class MirrorNodeClientImpl extends AbstractMirrorNodeClient<JsonNode> {
    * @param restClientBuilder the builder for the REST client that must have the base URL set
    */
   public MirrorNodeClientImpl(final RestClient.Builder restClientBuilder) {
+    this(restClientBuilder, Optional.empty());
+  }
+
+  /**
+   * Constructor with optional REST-Java base URL for {@code /api/v1/network/*} (mirror-node
+   * 0.15x+).
+   *
+   * @param restClientBuilder builder with Node REST base URL (e.g. port 38081)
+   * @param mirrorNodeJavaRestBaseUrl optional base URL for REST-Java (e.g. {@code
+   *     http://localhost:8084})
+   */
+  public MirrorNodeClientImpl(
+      final RestClient.Builder restClientBuilder,
+      final Optional<String> mirrorNodeJavaRestBaseUrl) {
     Objects.requireNonNull(restClientBuilder, "restClientBuilder must not be null");
-    mirrorNodeRestClient = new MirrorNodeRestClientImpl(restClientBuilder);
+    Objects.requireNonNull(mirrorNodeJavaRestBaseUrl, "mirrorNodeJavaRestBaseUrl must not be null");
+    mirrorNodeRestClient =
+        new MirrorNodeRestClientImpl(restClientBuilder, mirrorNodeJavaRestBaseUrl);
     jsonConverter = new MirrorNodeJsonConverterImpl();
     objectMapper = new ObjectMapper();
     restClient = restClientBuilder.build();

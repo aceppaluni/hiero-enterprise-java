@@ -21,6 +21,8 @@ import org.hiero.base.protocol.data.TokenDissociateRequest;
 import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
+import org.hiero.base.protocol.data.TokenUpdateNftsRequest;
+import org.hiero.base.protocol.data.TokenUpdateRequest;
 import org.jspecify.annotations.NonNull;
 
 public class NftClientImpl implements NftClient {
@@ -78,6 +80,45 @@ public class NftClientImpl implements NftClient {
             treasuryKey,
             TokenType.NON_FUNGIBLE_UNIQUE,
             supplierKey);
+    final TokenCreateResult tokenCreateResult = client.executeTokenCreateTransaction(request);
+    return tokenCreateResult.tokenId();
+  }
+
+  @Override
+  public TokenId createNftType(
+      @NonNull final String name,
+      @NonNull final String symbol,
+      @NonNull final PrivateKey supplierKey,
+      @NonNull final PrivateKey metadataKey)
+      throws HieroException {
+    return createNftType(
+        name,
+        symbol,
+        operationalAccount.accountId(),
+        operationalAccount.privateKey(),
+        supplierKey,
+        metadataKey);
+  }
+
+  @Override
+  public TokenId createNftType(
+      @NonNull final String name,
+      @NonNull final String symbol,
+      @NonNull final AccountId treasuryAccountId,
+      @NonNull final PrivateKey treasuryKey,
+      @NonNull final PrivateKey supplierKey,
+      @NonNull final PrivateKey metadataKey)
+      throws HieroException {
+    Objects.requireNonNull(metadataKey, "metadataKey must not be null");
+    final TokenCreateRequest request =
+        TokenCreateRequest.of(
+            name,
+            symbol,
+            treasuryAccountId,
+            treasuryKey,
+            TokenType.NON_FUNGIBLE_UNIQUE,
+            supplierKey,
+            metadataKey);
     final TokenCreateResult tokenCreateResult = client.executeTokenCreateTransaction(request);
     return tokenCreateResult.tokenId();
   }
@@ -196,6 +237,50 @@ public class NftClientImpl implements NftClient {
     final TokenTransferRequest request =
         TokenTransferRequest.of(tokenId, serialNumber, fromAccountId, toAccountId, fromAccountKey);
     client.executeTransferTransaction(request);
+  }
+
+  @Override
+  public void updateNftType(@NonNull TokenId tokenId, @NonNull String name, @NonNull String symbol)
+      throws HieroException {
+    updateNftType(tokenId, name, symbol, operationalAccount.privateKey());
+  }
+
+  @Override
+  public void updateNftType(
+      @NonNull TokenId tokenId,
+      @NonNull String name,
+      @NonNull String symbol,
+      @NonNull PrivateKey adminKey)
+      throws HieroException {
+    Objects.requireNonNull(tokenId, "tokenId must not be null");
+    Objects.requireNonNull(name, "name must not be null");
+    Objects.requireNonNull(symbol, "symbol must not be null");
+    Objects.requireNonNull(adminKey, "adminKey must not be null");
+    final TokenUpdateRequest request = TokenUpdateRequest.of(tokenId, adminKey, name, symbol);
+    client.executeTokenUpdateTransaction(request);
+  }
+
+  @Override
+  public void updateNftsMetadata(
+      @NonNull TokenId tokenId, @NonNull List<Long> serialNumbers, @NonNull byte[] metadata)
+      throws HieroException {
+    updateNftsMetadata(tokenId, serialNumbers, operationalAccount.privateKey(), metadata);
+  }
+
+  @Override
+  public void updateNftsMetadata(
+      @NonNull TokenId tokenId,
+      @NonNull List<Long> serialNumbers,
+      @NonNull PrivateKey metadataKey,
+      @NonNull byte[] metadata)
+      throws HieroException {
+    Objects.requireNonNull(tokenId, "tokenId must not be null");
+    Objects.requireNonNull(serialNumbers, "serialNumbers must not be null");
+    Objects.requireNonNull(metadataKey, "metadataKey must not be null");
+    Objects.requireNonNull(metadata, "metadata must not be null");
+    final TokenUpdateNftsRequest request =
+        TokenUpdateNftsRequest.of(tokenId, serialNumbers, metadata, metadataKey);
+    client.executeTokenUpdateNftsTransaction(request);
   }
 
   @Override
