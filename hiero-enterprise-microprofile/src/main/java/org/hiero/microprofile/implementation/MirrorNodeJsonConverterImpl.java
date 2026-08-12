@@ -1055,6 +1055,56 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               ? AccountId.fromString(jsonObject.getString("node_account_id"))
               : null;
 
+      final String description = getNullableString(jsonObject, "description").orElse(null);
+
+      final String memo = getNullableString(jsonObject, "memo").orElse(null);
+
+      final String publicKey =
+          jsonObject.containsKey("public_key") && !jsonObject.isNull("public_key")
+              ? jsonObject.getString("public_key")
+              : null;
+
+      final Key adminKey =
+          jsonObject.containsKey("admin_key") && !jsonObject.isNull("admin_key")
+              ? parseKey(jsonObject.getJsonObject("admin_key"))
+              : null;
+
+      final String nodeCertHash = getNullableString(jsonObject, "node_cert_hash").orElse(null);
+
+      final Long stake =
+          jsonObject.containsKey("stake") && !jsonObject.isNull("stake")
+              ? jsonObject.getJsonNumber("stake").longValue()
+              : null;
+
+      final Long minStake =
+          jsonObject.containsKey("min_stake") && !jsonObject.isNull("min_stake")
+              ? jsonObject.getJsonNumber("min_stake").longValue()
+              : null;
+
+      final Long maxStake =
+          jsonObject.containsKey("max_stake") && !jsonObject.isNull("max_stake")
+              ? jsonObject.getJsonNumber("max_stake").longValue()
+              : null;
+
+      final Long stakeRewarded =
+          jsonObject.containsKey("stake_rewarded") && !jsonObject.isNull("stake_rewarded")
+              ? jsonObject.getJsonNumber("stake_rewarded").longValue()
+              : null;
+
+      final Long stakeNotRewarded =
+          jsonObject.containsKey("stake_not_rewarded") && !jsonObject.isNull("stake_not_rewarded")
+              ? jsonObject.getJsonNumber("stake_not_rewarded").longValue()
+              : null;
+
+      final Long rewardRateStart =
+          jsonObject.containsKey("reward_rate_start") && !jsonObject.isNull("reward_rate_start")
+              ? jsonObject.getJsonNumber("reward_rate_start").longValue()
+              : null;
+
+      final boolean declineReward = jsonObject.getBoolean("decline_reward");
+
+      final String fileId = getNullableString(jsonObject, "file_id").orElse(null);
+
       final JsonObject stakingPeriod = jsonObject.getJsonObject("staking_period");
 
       final Instant stakingPeriodFrom =
@@ -1066,6 +1116,11 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
           stakingPeriod != null && stakingPeriod.containsKey("to") && !stakingPeriod.isNull("to")
               ? parseInstant(stakingPeriod.getString("to"))
               : null;
+
+      final TimestampRange timestampRange =
+          new TimestampRange(
+              parseInstant(jsonObject.getJsonObject("timestamp").getString("from")),
+              parseInstant(jsonObject.getJsonObject("timestamp").getString("to")));
 
       final List<Node.ServiceEndpoint> serviceEndpoints =
           jsonArrayToStream(jsonObject.getJsonArray("service_endpoints"))
@@ -1090,41 +1145,22 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
           new Node(
               nodeId,
               nodeAccountId,
-              getNullableString(jsonObject, "description").orElse(null),
-              getNullableString(jsonObject, "memo").orElse(null),
-              jsonObject.containsKey("public_key") && !jsonObject.isNull("public_key")
-                  ? jsonObject.getString("public_key")
-                  : null,
-              jsonObject.containsKey("admin_key") && !jsonObject.isNull("admin_key")
-                  ? parseKey(jsonObject.getJsonObject("admin_key"))
-                  : null,
-              getNullableString(jsonObject, "node_cert_hash").orElse(null),
-              jsonObject.containsKey("stake") && !jsonObject.isNull("stake")
-                  ? jsonObject.getJsonNumber("stake").longValue()
-                  : null,
-              jsonObject.containsKey("min_stake") && !jsonObject.isNull("min_stake")
-                  ? jsonObject.getJsonNumber("min_stake").longValue()
-                  : null,
-              jsonObject.containsKey("max_stake") && !jsonObject.isNull("max_stake")
-                  ? jsonObject.getJsonNumber("max_stake").longValue()
-                  : null,
-              jsonObject.containsKey("stake_rewarded") && !jsonObject.isNull("stake_rewarded")
-                  ? jsonObject.getJsonNumber("stake_rewarded").longValue()
-                  : null,
-              jsonObject.containsKey("stake_not_rewarded")
-                      && !jsonObject.isNull("stake_not_rewarded")
-                  ? jsonObject.getJsonNumber("stake_not_rewarded").longValue()
-                  : null,
-              jsonObject.containsKey("reward_rate_start") && !jsonObject.isNull("reward_rate_start")
-                  ? jsonObject.getJsonNumber("reward_rate_start").longValue()
-                  : null,
-              jsonObject.getBoolean("decline_reward"),
-              getNullableString(jsonObject, "file_id").orElse(null),
+              description,
+              memo,
+              publicKey,
+              adminKey,
+              nodeCertHash,
+              stake,
+              minStake,
+              maxStake,
+              stakeRewarded,
+              stakeNotRewarded,
+              rewardRateStart,
+              declineReward,
+              fileId,
               stakingPeriodFrom,
               stakingPeriodTo,
-              new TimestampRange(
-                  parseInstant(jsonObject.getString("timestamp_from", "")),
-                  parseInstant(jsonObject.getString("timestamp_to", ""))),
+              timestampRange,
               serviceEndpoints,
               grpcProxyEndpoint));
     } catch (final Exception e) {
