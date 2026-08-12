@@ -34,6 +34,7 @@ import com.hedera.hashgraph.sdk.TokenCreateTransaction;
 import com.hedera.hashgraph.sdk.TokenDeleteTransaction;
 import com.hedera.hashgraph.sdk.TokenDissociateTransaction;
 import com.hedera.hashgraph.sdk.TokenMintTransaction;
+import com.hedera.hashgraph.sdk.TokenUpdateNftsTransaction;
 import com.hedera.hashgraph.sdk.TokenUpdateTransaction;
 import com.hedera.hashgraph.sdk.TopicCreateTransaction;
 import com.hedera.hashgraph.sdk.TopicDeleteTransaction;
@@ -108,6 +109,8 @@ import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
 import org.hiero.base.protocol.data.TokenTransferResult;
+import org.hiero.base.protocol.data.TokenUpdateNftsRequest;
+import org.hiero.base.protocol.data.TokenUpdateNftsResult;
 import org.hiero.base.protocol.data.TokenUpdateRequest;
 import org.hiero.base.protocol.data.TokenUpdateResult;
 import org.hiero.base.protocol.data.TopicCreateRequest;
@@ -593,6 +596,9 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
       if (request.adminKey() != null) {
         transaction.setAdminKey(request.adminKey().getPublicKey());
       }
+      if (request.metadataKey() != null) {
+        transaction.setMetadataKey(request.metadataKey().getPublicKey());
+      }
       sign(transaction, request.treasuryKey(), request.supplyKey(), request.adminKey());
       final TransactionReceipt receipt =
           executeTransactionAndWaitOnReceipt(transaction, TransactionType.TOKEN_CREATE);
@@ -643,6 +649,27 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
       return new TokenUpdateResult(receipt.transactionId, receipt.status);
     } catch (final Exception e) {
       throw new HieroException("Failed to execute update token transaction", e);
+    }
+  }
+
+  @Override
+  public TokenUpdateNftsResult executeTokenUpdateNftsTransaction(
+      @NonNull final TokenUpdateNftsRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final TokenUpdateNftsTransaction transaction =
+          new TokenUpdateNftsTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration())
+              .setTokenId(request.tokenId())
+              .setSerials(request.serials())
+              .setMetadata(request.metadata());
+      sign(transaction, request.metadataKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.NFT_UPDATE);
+      return new TokenUpdateNftsResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute update token nfts transaction", e);
     }
   }
 

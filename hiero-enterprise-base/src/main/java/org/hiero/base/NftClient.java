@@ -188,6 +188,110 @@ public interface NftClient {
   }
 
   /**
+   * Create a new NFT type with a metadata key. The operator account is used as treasury. The
+   * metadata key can authorize updates to NFT serial metadata, including after transfer out of the
+   * treasury (HIP-850).
+   *
+   * @param name the name of the NFT type
+   * @param symbol the symbol of the NFT type
+   * @param supplierKey the private key of the supplier account
+   * @param metadataKey the private key authorized to update NFT serial metadata
+   * @return the ID of the new NFT type
+   * @throws HieroException if the NFT type could not be created
+   */
+  @NonNull TokenId createNftType(
+      @NonNull String name,
+      @NonNull String symbol,
+      @NonNull PrivateKey supplierKey,
+      @NonNull PrivateKey metadataKey)
+      throws HieroException;
+
+  /**
+   * Create a new NFT type with a metadata key. The metadata key can authorize updates to NFT serial
+   * metadata, including after transfer out of the treasury (HIP-850).
+   *
+   * @param name the name of the NFT type
+   * @param symbol the symbol of the NFT type
+   * @param treasuryAccountId the ID of the treasury account
+   * @param treasuryKey the private key of the treasury account
+   * @param supplierKey the private key of the supplier account
+   * @param metadataKey the private key authorized to update NFT serial metadata
+   * @return the ID of the new NFT type
+   * @throws HieroException if the NFT type could not be created
+   */
+  @NonNull TokenId createNftType(
+      @NonNull String name,
+      @NonNull String symbol,
+      @NonNull AccountId treasuryAccountId,
+      @NonNull PrivateKey treasuryKey,
+      @NonNull PrivateKey supplierKey,
+      @NonNull PrivateKey metadataKey)
+      throws HieroException;
+
+  /**
+   * Create a new NFT type with a metadata key.
+   *
+   * @param name the name of the NFT type
+   * @param symbol the symbol of the NFT type
+   * @param treasuryAccountId the ID of the treasury account
+   * @param treasuryKey the private key of the treasury account
+   * @param supplierKey the private key of the supplier account
+   * @param metadataKey the private key authorized to update NFT serial metadata
+   * @return the ID of the new NFT type
+   * @throws HieroException if the NFT type could not be created
+   */
+  @NonNull
+  default TokenId createNftType(
+      @NonNull String name,
+      @NonNull String symbol,
+      @NonNull String treasuryAccountId,
+      @NonNull String treasuryKey,
+      @NonNull String supplierKey,
+      @NonNull String metadataKey)
+      throws HieroException {
+    Objects.requireNonNull(treasuryAccountId, "treasuryAccountId must not be null");
+    Objects.requireNonNull(treasuryKey, "treasuryKey must not be null");
+    Objects.requireNonNull(supplierKey, "supplierKey must not be null");
+    Objects.requireNonNull(metadataKey, "metadataKey must not be null");
+    return createNftType(
+        name,
+        symbol,
+        AccountId.fromString(treasuryAccountId),
+        PrivateKey.fromString(treasuryKey),
+        PrivateKey.fromString(supplierKey),
+        PrivateKey.fromString(metadataKey));
+  }
+
+  /**
+   * Create a new NFT type with a metadata key.
+   *
+   * @param name the name of the NFT type
+   * @param symbol the symbol of the NFT type
+   * @param treasuryAccount the treasury account
+   * @param supplierKey the private key of the supplier account
+   * @param metadataKey the private key authorized to update NFT serial metadata
+   * @return the ID of the new NFT type
+   * @throws HieroException if the NFT type could not be created
+   */
+  @NonNull
+  default TokenId createNftType(
+      @NonNull String name,
+      @NonNull String symbol,
+      @NonNull Account treasuryAccount,
+      @NonNull PrivateKey supplierKey,
+      @NonNull PrivateKey metadataKey)
+      throws HieroException {
+    Objects.requireNonNull(treasuryAccount, "treasuryAccount must not be null");
+    return createNftType(
+        name,
+        symbol,
+        treasuryAccount.accountId(),
+        treasuryAccount.privateKey(),
+        supplierKey,
+        metadataKey);
+  }
+
+  /**
    * Associate an account with an NFT type. If an account is associated with an NFT type, the
    * account can hold NFTs of that type. Otherwise, the account cannot hold NFTs of that type and
    * tranfer NFTs of that type will fail.
@@ -637,6 +741,92 @@ public interface NftClient {
       throws HieroException {
     Objects.requireNonNull(tokenId, "tokenId must not be null");
     updateNftType(TokenId.fromString(tokenId), name, symbol);
+  }
+
+  /**
+   * Updates the metadata of a single NFT serial. The operator account key is used as the metadata
+   * key (or supply key while the NFT is held in treasury; see HIP-850).
+   *
+   * @param tokenId the ID of the NFT type
+   * @param serialNumber the serial number of the NFT
+   * @param metadata the new metadata (at most 100 bytes)
+   * @throws HieroException if the NFT metadata could not be updated
+   */
+  default void updateNftMetadata(
+      @NonNull TokenId tokenId, long serialNumber, @NonNull byte[] metadata) throws HieroException {
+    updateNftsMetadata(tokenId, List.of(serialNumber), metadata);
+  }
+
+  /**
+   * Updates the metadata of a single NFT serial. Must be signed by the token metadata key, or by
+   * the supply key while the NFT is held in the treasury (HIP-850).
+   *
+   * @param tokenId the ID of the NFT type
+   * @param serialNumber the serial number of the NFT
+   * @param metadataKey the metadata key (or supply key for treasury-held NFTs)
+   * @param metadata the new metadata (at most 100 bytes)
+   * @throws HieroException if the NFT metadata could not be updated
+   */
+  default void updateNftMetadata(
+      @NonNull TokenId tokenId,
+      long serialNumber,
+      @NonNull PrivateKey metadataKey,
+      @NonNull byte[] metadata)
+      throws HieroException {
+    updateNftsMetadata(tokenId, List.of(serialNumber), metadataKey, metadata);
+  }
+
+  /**
+   * Updates the metadata of NFT serials. The operator account key is used as the metadata key (or
+   * supply key while the NFTs are held in treasury; see HIP-850). At most 10 serials may be updated
+   * in one call.
+   *
+   * @param tokenId the ID of the NFT type
+   * @param serialNumbers the serial numbers to update
+   * @param metadata the new metadata (at most 100 bytes)
+   * @throws HieroException if the NFT metadata could not be updated
+   */
+  void updateNftsMetadata(
+      @NonNull TokenId tokenId, @NonNull List<Long> serialNumbers, @NonNull byte[] metadata)
+      throws HieroException;
+
+  /**
+   * Updates the metadata of NFT serials. Must be signed by the token metadata key, or by the supply
+   * key while the NFTs are held in the treasury (HIP-850). At most 10 serials may be updated in one
+   * call.
+   *
+   * @param tokenId the ID of the NFT type
+   * @param serialNumbers the serial numbers to update
+   * @param metadataKey the metadata key (or supply key for treasury-held NFTs)
+   * @param metadata the new metadata (at most 100 bytes)
+   * @throws HieroException if the NFT metadata could not be updated
+   */
+  void updateNftsMetadata(
+      @NonNull TokenId tokenId,
+      @NonNull List<Long> serialNumbers,
+      @NonNull PrivateKey metadataKey,
+      @NonNull byte[] metadata)
+      throws HieroException;
+
+  /**
+   * Updates the metadata of NFT serials.
+   *
+   * @param tokenId the ID of the NFT type
+   * @param serialNumbers the serial numbers to update
+   * @param metadataKey the metadata key (or supply key for treasury-held NFTs)
+   * @param metadata the new metadata (at most 100 bytes)
+   * @throws HieroException if the NFT metadata could not be updated
+   */
+  default void updateNftsMetadata(
+      @NonNull String tokenId,
+      @NonNull List<Long> serialNumbers,
+      @NonNull String metadataKey,
+      @NonNull byte[] metadata)
+      throws HieroException {
+    Objects.requireNonNull(tokenId, "tokenId must not be null");
+    Objects.requireNonNull(metadataKey, "metadataKey must not be null");
+    updateNftsMetadata(
+        TokenId.fromString(tokenId), serialNumbers, PrivateKey.fromString(metadataKey), metadata);
   }
 
   /**

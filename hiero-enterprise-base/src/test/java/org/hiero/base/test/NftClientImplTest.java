@@ -30,6 +30,8 @@ import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
 import org.hiero.base.protocol.data.TokenTransferResult;
+import org.hiero.base.protocol.data.TokenUpdateNftsRequest;
+import org.hiero.base.protocol.data.TokenUpdateNftsResult;
 import org.hiero.base.protocol.data.TokenUpdateRequest;
 import org.hiero.base.protocol.data.TokenUpdateResult;
 import org.junit.jupiter.api.Assertions;
@@ -209,7 +211,73 @@ public class NftClientImplTest {
     Assertions.assertEquals(accountId, tokenCreateRequest.treasuryAccountId());
     Assertions.assertEquals(name, tokenCreateRequest.name());
     Assertions.assertEquals(symbol, tokenCreateRequest.symbol());
+    Assertions.assertNull(tokenCreateRequest.metadataKey());
 
+    Assertions.assertEquals(tokenId, result);
+  }
+
+  @Test
+  void testCreateNftWithMetadataKey() throws HieroException {
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    final TokenCreateResult tokenCreateResult = Mockito.mock(TokenCreateResult.class);
+
+    final String name = "TOKEN";
+    final String symbol = "NFT";
+    final PrivateKey supplierKey = PrivateKey.generateECDSA();
+    final PrivateKey treasuryKey = PrivateKey.generateECDSA();
+    final PrivateKey metadataKey = PrivateKey.generateECDSA();
+    final AccountId accountId = AccountId.fromString("1.2.3");
+
+    when(protocolLayerClient.executeTokenCreateTransaction(any(TokenCreateRequest.class)))
+        .thenReturn(tokenCreateResult);
+    when(tokenCreateResult.tokenId()).thenReturn(tokenId);
+
+    final TokenId result =
+        nftClientImpl.createNftType(name, symbol, accountId, treasuryKey, supplierKey, metadataKey);
+
+    verify(protocolLayerClient, times(1))
+        .executeTokenCreateTransaction(tokenRequestCaptor.capture());
+
+    TokenCreateRequest tokenCreateRequest = tokenRequestCaptor.getValue();
+
+    Assertions.assertEquals(treasuryKey, tokenCreateRequest.treasuryKey());
+    Assertions.assertEquals(supplierKey, tokenCreateRequest.supplyKey());
+    Assertions.assertEquals(metadataKey, tokenCreateRequest.metadataKey());
+    Assertions.assertEquals(accountId, tokenCreateRequest.treasuryAccountId());
+    Assertions.assertEquals(name, tokenCreateRequest.name());
+    Assertions.assertEquals(symbol, tokenCreateRequest.symbol());
+    Assertions.assertEquals(tokenId, result);
+  }
+
+  @Test
+  void testCreateNftWithSupplierAndMetadataKey() throws HieroException {
+    final PrivateKey privateKey = PrivateKey.generateECDSA();
+    final AccountId accountId = AccountId.fromString("1.2.3");
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    final TokenCreateResult tokenCreateResult = Mockito.mock(TokenCreateResult.class);
+
+    final String name = "TOKEN";
+    final String symbol = "NFT";
+    final PrivateKey supplierKey = PrivateKey.generateECDSA();
+    final PrivateKey metadataKey = PrivateKey.generateECDSA();
+
+    when(operationalAccount.privateKey()).thenReturn(privateKey);
+    when(operationalAccount.accountId()).thenReturn(accountId);
+    when(protocolLayerClient.executeTokenCreateTransaction(any(TokenCreateRequest.class)))
+        .thenReturn(tokenCreateResult);
+    when(tokenCreateResult.tokenId()).thenReturn(tokenId);
+
+    final TokenId result = nftClientImpl.createNftType(name, symbol, supplierKey, metadataKey);
+
+    verify(protocolLayerClient, times(1))
+        .executeTokenCreateTransaction(tokenRequestCaptor.capture());
+
+    TokenCreateRequest tokenCreateRequest = tokenRequestCaptor.getValue();
+
+    Assertions.assertEquals(privateKey, tokenCreateRequest.treasuryKey());
+    Assertions.assertEquals(supplierKey, tokenCreateRequest.supplyKey());
+    Assertions.assertEquals(metadataKey, tokenCreateRequest.metadataKey());
+    Assertions.assertEquals(accountId, tokenCreateRequest.treasuryAccountId());
     Assertions.assertEquals(tokenId, result);
   }
 
@@ -225,7 +293,15 @@ public class NftClientImplTest {
         () -> nftClientImpl.createNftType(null, null, (AccountId) null, (PrivateKey) null));
     Assertions.assertThrows(
         NullPointerException.class,
-        () -> nftClientImpl.createNftType(null, null, null, null, (PrivateKey) null));
+        () -> nftClientImpl.createNftType(null, null, (AccountId) null, null, (PrivateKey) null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            nftClientImpl.createNftType(
+                null, null, (AccountId) null, null, (PrivateKey) null, (PrivateKey) null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> nftClientImpl.createNftType(null, null, (PrivateKey) null, (PrivateKey) null));
   }
 
   @Test
@@ -962,6 +1038,85 @@ public class NftClientImplTest {
 
     Assertions.assertThrows(
         HieroException.class, () -> nftClientImpl.updateNftType(tokenId, "Updated NFT", "UNFT"));
+  }
+
+  @Test
+  void testUpdateNftsMetadataWithOperatorKey() throws HieroException {
+    final PrivateKey privateKey = PrivateKey.generateECDSA();
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    final List<Long> serials = List.of(1L, 2L);
+    final byte[] metadata = "updated".getBytes();
+    final TokenUpdateNftsResult result = Mockito.mock(TokenUpdateNftsResult.class);
+    ArgumentCaptor<TokenUpdateNftsRequest> captor =
+        ArgumentCaptor.forClass(TokenUpdateNftsRequest.class);
+
+    when(operationalAccount.privateKey()).thenReturn(privateKey);
+    when(protocolLayerClient.executeTokenUpdateNftsTransaction(any(TokenUpdateNftsRequest.class)))
+        .thenReturn(result);
+
+    nftClientImpl.updateNftsMetadata(tokenId, serials, metadata);
+
+    verify(protocolLayerClient, times(1)).executeTokenUpdateNftsTransaction(captor.capture());
+    TokenUpdateNftsRequest request = captor.getValue();
+    Assertions.assertEquals(tokenId, request.tokenId());
+    Assertions.assertEquals(serials, request.serials());
+    Assertions.assertArrayEquals(metadata, request.metadata());
+    Assertions.assertEquals(privateKey, request.metadataKey());
+  }
+
+  @Test
+  void testUpdateNftMetadataWithCustomKey() throws HieroException {
+    final PrivateKey metadataKey = PrivateKey.generateECDSA();
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    final byte[] metadata = "updated".getBytes();
+    final TokenUpdateNftsResult result = Mockito.mock(TokenUpdateNftsResult.class);
+    ArgumentCaptor<TokenUpdateNftsRequest> captor =
+        ArgumentCaptor.forClass(TokenUpdateNftsRequest.class);
+
+    when(protocolLayerClient.executeTokenUpdateNftsTransaction(any(TokenUpdateNftsRequest.class)))
+        .thenReturn(result);
+
+    nftClientImpl.updateNftMetadata(tokenId, 1L, metadataKey, metadata);
+
+    verify(protocolLayerClient, times(1)).executeTokenUpdateNftsTransaction(captor.capture());
+    TokenUpdateNftsRequest request = captor.getValue();
+    Assertions.assertEquals(tokenId, request.tokenId());
+    Assertions.assertEquals(List.of(1L), request.serials());
+    Assertions.assertArrayEquals(metadata, request.metadata());
+    Assertions.assertEquals(metadataKey, request.metadataKey());
+  }
+
+  @Test
+  void testUpdateNftsMetadataNullParams() {
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    final PrivateKey metadataKey = PrivateKey.generateECDSA();
+    final List<Long> serials = List.of(1L);
+    final byte[] metadata = "updated".getBytes();
+
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> nftClientImpl.updateNftsMetadata(null, serials, metadataKey, metadata));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> nftClientImpl.updateNftsMetadata(tokenId, null, metadataKey, metadata));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> nftClientImpl.updateNftsMetadata(tokenId, serials, null, metadata));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> nftClientImpl.updateNftsMetadata(tokenId, serials, metadataKey, null));
+  }
+
+  @Test
+  void testUpdateNftsMetadataThrowsHieroException() throws HieroException {
+    final TokenId tokenId = TokenId.fromString("1.2.3");
+    when(operationalAccount.privateKey()).thenReturn(PrivateKey.generateECDSA());
+    when(protocolLayerClient.executeTokenUpdateNftsTransaction(any(TokenUpdateNftsRequest.class)))
+        .thenThrow(new HieroException("update metadata failed"));
+
+    Assertions.assertThrows(
+        HieroException.class,
+        () -> nftClientImpl.updateNftsMetadata(tokenId, List.of(1L), "meta".getBytes()));
   }
 
   @Test
