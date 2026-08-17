@@ -1042,6 +1042,13 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
         .toList();
   }
 
+  private Node.ServiceEndpoint parseServiceEndpoint(final JsonObject jsonObject) {
+    return new Node.ServiceEndpoint(
+        jsonObject.getString("ip_address", null),
+        jsonObject.getInt("port"),
+        jsonObject.getString("domain_name", null));
+  }
+
   private @NonNull Optional<Node> toNode(@NonNull JsonObject jsonObject) {
     if (jsonObject.isEmpty() || jsonObject.containsKey("_status")) {
       return Optional.empty();
@@ -1124,21 +1131,13 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
 
       final List<Node.ServiceEndpoint> serviceEndpoints =
           jsonArrayToStream(jsonObject.getJsonArray("service_endpoints"))
-              .map(
-                  endpoint ->
-                      new Node.ServiceEndpoint(
-                          endpoint.asJsonObject().getString("ip_address", null),
-                          endpoint.asJsonObject().getInt("port"),
-                          endpoint.asJsonObject().getString("domain_name", null)))
+              .map(endpoint -> parseServiceEndpoint(endpoint.asJsonObject()))
               .toList();
 
       final Node.ServiceEndpoint grpcProxyEndpoint =
           jsonObject.containsKey("grpc_proxy_endpoint")
                   && jsonObject.getJsonObject("grpc_proxy_endpoint") != null
-              ? new Node.ServiceEndpoint(
-                  jsonObject.getJsonObject("grpc_proxy_endpoint").getString("ip_address", null),
-                  jsonObject.getJsonObject("grpc_proxy_endpoint").getInt("port"),
-                  jsonObject.getJsonObject("grpc_proxy_endpoint").getString("domain_name", null))
+              ? parseServiceEndpoint(jsonObject.getJsonObject("grpc_proxy_endpoint"))
               : null;
 
       return Optional.of(

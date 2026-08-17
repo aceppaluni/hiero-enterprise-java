@@ -52,7 +52,6 @@ import org.hiero.base.data.Transfer;
 import org.hiero.base.implementation.MirrorNodeJsonConverter;
 import org.hiero.base.protocol.data.TransactionType;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<JsonNode> {
 
@@ -967,24 +966,11 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
     return Instant.ofEpochSecond(seconds, nanos);
   }
 
-  private @Nullable Key parsePublicKey(@NonNull JsonNode node) {
-    Objects.requireNonNull(node);
-
-    try {
-      String key = node.asText();
-
-      if (key.startsWith("0x")) {
-        key = key.substring(2);
-      }
-
-      byte[] bytes = HexFormat.of().parseHex(key);
-
-      return Key.fromBytes(bytes);
-
-    } catch (Exception e) {
-      // Mirror Node public_key can be RSA DER, not a Hedera Key
-      return null;
-    }
+  private Node.ServiceEndpoint parseServiceEndpoint(final JsonNode endpoint) {
+    return new Node.ServiceEndpoint(
+        endpoint.hasNonNull("ip_address_v4") ? endpoint.get("ip_address_v4").asText() : null,
+        endpoint.get("port").asInt(),
+        endpoint.hasNonNull("domain_name") ? endpoint.get("domain_name").asText() : null);
   }
 
   @Override
@@ -1020,35 +1006,53 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               ? AccountId.fromString(node.get("node_account_id").asText())
               : null;
 
+      final String description =
+          node.hasNonNull("description") ? node.get("description").asText() : null;
+
+      final String memo = node.hasNonNull("memo") ? node.get("memo").asText() : null;
+
+      final String publicKey =
+          node.hasNonNull("public_key") ? node.get("public_key").asText() : null;
+
+      final Key adminKey = node.hasNonNull("admin_key") ? parseKey(node.get("admin_key")) : null;
+
+      final String nodeCertHash =
+          node.hasNonNull("node_cert_hash") ? node.get("node_cert_hash").asText() : null;
+
+      final Long stake = node.hasNonNull("stake") ? node.get("stake").asLong() : null;
+
+      final Long minStake = node.hasNonNull("min_stake") ? node.get("min_stake").asLong() : null;
+
+      final Long maxStake = node.hasNonNull("max_stake") ? node.get("max_stake").asLong() : null;
+
+      final Long stakeRewarded =
+          node.hasNonNull("stake_rewarded") ? node.get("stake_rewarded").asLong() : null;
+
+      final Long stakeNotRewarded =
+          node.hasNonNull("stake_not_rewarded") ? node.get("stake_not_rewarded").asLong() : null;
+
+      final Long rewardRateStart =
+          node.hasNonNull("reward_rate_start") ? node.get("reward_rate_start").asLong() : null;
+
+      final boolean declineReward =
+          node.has("decline_reward") && node.get("decline_reward").asBoolean();
+
+      final String fileId = node.hasNonNull("file_id") ? node.get("file_id").asText() : null;
+
       final List<Node.ServiceEndpoint> serviceEndpoints =
           node.has("service_endpoints")
               ? jsonArrayToStream(node.get("service_endpoints"))
-                  .map(
-                      endpoint ->
-                          new Node.ServiceEndpoint(
-                              endpoint.hasNonNull("ip_address_v4")
-                                  ? endpoint.get("ip_address_v4").asText()
-                                  : null,
-                              endpoint.get("port").asInt(),
-                              endpoint.hasNonNull("domain_name")
-                                  ? endpoint.get("domain_name").asText()
-                                  : null))
+                  .map(this::parseServiceEndpoint)
                   .toList()
               : List.of();
 
       final Node.ServiceEndpoint grpcProxyEndpoint =
           node.has("grpc_proxy_endpoint") && !node.get("grpc_proxy_endpoint").isNull()
-              ? new Node.ServiceEndpoint(
-                  node.get("grpc_proxy_endpoint").hasNonNull("ip_address_v4")
-                      ? node.get("grpc_proxy_endpoint").get("ip_address_v4").asText()
-                      : null,
-                  node.get("grpc_proxy_endpoint").get("port").asInt(),
-                  node.get("grpc_proxy_endpoint").hasNonNull("domain_name")
-                      ? node.get("grpc_proxy_endpoint").get("domain_name").asText()
-                      : null)
+              ? parseServiceEndpoint(node.get("grpc_proxy_endpoint"))
               : null;
 
       final JsonNode timestampNode = node.get("timestamp");
+
       final Instant fromTimestamp =
           timestampNode != null && timestampNode.hasNonNull("from")
               ? parseInstant(timestampNode.get("from").asText())
@@ -1071,28 +1075,28 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               ? parseInstant(stakingPeriodNode.get("to").asText())
               : null;
 
+      final TimestampRange timestampRange = new TimestampRange(fromTimestamp, toTimestamp);
+
       return Optional.of(
           new Node(
               nodeId,
               nodeAccountId,
-              node.hasNonNull("description") ? node.get("description").asText() : null,
-              node.hasNonNull("memo") ? node.get("memo").asText() : null,
-              node.hasNonNull("public_key") ? node.get("public_key").asText() : null,
-              node.hasNonNull("admin_key") ? parseKey(node.get("admin_key")) : null,
-              node.hasNonNull("node_cert_hash") ? node.get("node_cert_hash").asText() : null,
-              node.hasNonNull("stake") ? node.get("stake").asLong() : null,
-              node.hasNonNull("min_stake") ? node.get("min_stake").asLong() : null,
-              node.hasNonNull("max_stake") ? node.get("max_stake").asLong() : null,
-              node.hasNonNull("stake_rewarded") ? node.get("stake_rewarded").asLong() : null,
-              node.hasNonNull("stake_not_rewarded")
-                  ? node.get("stake_not_rewarded").asLong()
-                  : null,
-              node.hasNonNull("reward_rate_start") ? node.get("reward_rate_start").asLong() : null,
-              node.has("decline_reward") && node.get("decline_reward").asBoolean(),
-              node.hasNonNull("file_id") ? node.get("file_id").asText() : null,
+              description,
+              memo,
+              publicKey,
+              adminKey,
+              nodeCertHash,
+              stake,
+              minStake,
+              maxStake,
+              stakeRewarded,
+              stakeNotRewarded,
+              rewardRateStart,
+              declineReward,
+              fileId,
               stakingPeriodFrom,
               stakingPeriodTo,
-              new TimestampRange(fromTimestamp, toTimestamp),
+              timestampRange,
               serviceEndpoints,
               grpcProxyEndpoint));
     } catch (final Exception e) {

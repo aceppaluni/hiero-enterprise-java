@@ -20,6 +20,20 @@ public class NetworkRepositoryTest {
   @Autowired private MirrorNodeClient mirrorNodeClient;
 
   @Test
+  @Disabled("Verified against testnet; disabled because CI cannot access testnet")
+  void findNetworkNodes() throws HieroException {
+    List<Node> result = mirrorNodeClient.queryNetworkNodes().getData();
+
+    Assertions.assertNotNull(result);
+    Assertions.assertFalse(result.isEmpty());
+
+    Node node = result.getFirst();
+
+    Assertions.assertNotNull(node);
+    Assertions.assertNotNull(node.nodeId());
+  }
+
+  @Test
   void findExchangeRates() throws HieroException {
     Optional<ExchangeRates> result = networkRepository.exchangeRates();
 
