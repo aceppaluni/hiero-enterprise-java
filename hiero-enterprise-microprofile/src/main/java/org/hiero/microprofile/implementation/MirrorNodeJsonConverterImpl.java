@@ -1044,7 +1044,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
 
   private Node.ServiceEndpoint parseServiceEndpoint(final JsonObject jsonObject) {
     return new Node.ServiceEndpoint(
-        jsonObject.getString("ip_address", null),
+        jsonObject.getString("ip_address_v4", null),
         jsonObject.getInt("port"),
         jsonObject.getString("domain_name", null));
   }
@@ -1127,7 +1127,10 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
       final TimestampRange timestampRange =
           new TimestampRange(
               parseInstant(jsonObject.getJsonObject("timestamp").getString("from")),
-              parseInstant(jsonObject.getJsonObject("timestamp").getString("to")));
+              jsonObject.getJsonObject("timestamp").containsKey("to")
+                      && !jsonObject.getJsonObject("timestamp").isNull("to")
+                  ? Instant.parse(jsonObject.getJsonObject("timestamp").getString("to"))
+                  : null);
 
       final List<Node.ServiceEndpoint> serviceEndpoints =
           jsonArrayToStream(jsonObject.getJsonArray("service_endpoints"))
@@ -1135,8 +1138,7 @@ public class MirrorNodeJsonConverterImpl implements MirrorNodeJsonConverter<Json
               .toList();
 
       final Node.ServiceEndpoint grpcProxyEndpoint =
-          jsonObject.containsKey("grpc_proxy_endpoint")
-                  && jsonObject.getJsonObject("grpc_proxy_endpoint") != null
+          jsonObject.containsKey("grpc_proxy_endpoint") && !jsonObject.isNull("grpc_proxy_endpoint")
               ? parseServiceEndpoint(jsonObject.getJsonObject("grpc_proxy_endpoint"))
               : null;
 

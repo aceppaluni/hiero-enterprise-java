@@ -11,7 +11,6 @@ import org.hiero.base.data.Node;
 import org.hiero.base.mirrornode.MirrorNodeClient;
 import org.hiero.base.mirrornode.NetworkRepository;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +21,6 @@ public class NetworkRepositoryTest {
   @Autowired private MirrorNodeClient mirrorNodeClient;
 
   @Test
-  @Disabled("Verified against testnet; disabled because CI cannot access testnet")
   void findNetworkNodes() throws HieroException {
     List<Node> result = mirrorNodeClient.queryNetworkNodes().getData();
 
