@@ -38,26 +38,36 @@ import org.hiero.base.protocol.data.HbarTransferRequest;
 import org.hiero.base.protocol.data.HbarTransferResult;
 import org.hiero.base.protocol.data.HookStoreRequest;
 import org.hiero.base.protocol.data.HookStoreResult;
+import org.hiero.base.protocol.data.NftAllowanceApproveRequest;
+import org.hiero.base.protocol.data.NftAllowanceApproveResult;
 import org.hiero.base.protocol.data.NftAllowanceDeleteRequest;
 import org.hiero.base.protocol.data.NftAllowanceDeleteResult;
+import org.hiero.base.protocol.data.NftApprovedTransferRequest;
+import org.hiero.base.protocol.data.NftApprovedTransferResult;
+import org.hiero.base.protocol.data.TokenAirdropRequest;
+import org.hiero.base.protocol.data.TokenAirdropResult;
 import org.hiero.base.protocol.data.TokenAssociateRequest;
 import org.hiero.base.protocol.data.TokenAssociateResult;
 import org.hiero.base.protocol.data.TokenBurnRequest;
 import org.hiero.base.protocol.data.TokenBurnResult;
+import org.hiero.base.protocol.data.TokenCancelAirdropRequest;
+import org.hiero.base.protocol.data.TokenCancelAirdropResult;
 import org.hiero.base.protocol.data.TokenCreateRequest;
 import org.hiero.base.protocol.data.TokenCreateResult;
 import org.hiero.base.protocol.data.TokenDeleteRequest;
 import org.hiero.base.protocol.data.TokenDeleteResult;
 import org.hiero.base.protocol.data.TokenDissociateRequest;
 import org.hiero.base.protocol.data.TokenDissociateResult;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateRequest;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateResult;
 import org.hiero.base.protocol.data.TokenFreezeRequest;
 import org.hiero.base.protocol.data.TokenFreezeResult;
 import org.hiero.base.protocol.data.TokenGrantKycRequest;
 import org.hiero.base.protocol.data.TokenGrantKycResult;
 import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
-import org.hiero.base.protocol.data.TokenPauseRequest;
-import org.hiero.base.protocol.data.TokenPauseResult;
+import org.hiero.base.protocol.data.TokenRejectRequest;
+import org.hiero.base.protocol.data.TokenRejectResult;
 import org.hiero.base.protocol.data.TokenRevokeKycRequest;
 import org.hiero.base.protocol.data.TokenRevokeKycResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
@@ -271,6 +281,16 @@ public interface ProtocolLayerClient {
       @NonNull final TokenUpdateRequest request) throws HieroException;
 
   /**
+   * Executes a token fee schedule update transaction.
+   *
+   * @param request the request containing the details of the token fee schedule update transaction
+   * @return the result of the token fee schedule update transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull TokenFeeScheduleUpdateResult executeTokenFeeScheduleUpdateTransaction(
+      @NonNull final TokenFeeScheduleUpdateRequest request) throws HieroException;
+
+  /**
    * Executes a token update NFTs transaction (updates metadata for NFT serials).
    *
    * @param request the request containing the details of the NFT metadata update
@@ -401,6 +421,51 @@ public interface ProtocolLayerClient {
       @NonNull final TokenTransferRequest request) throws HieroException;
 
   /**
+   * Executes an approved transfer transaction for NFTs. The spender transfers NFTs on behalf of the
+   * owner based on a previously granted allowance. The spender pays the transaction fee and must
+   * sign the transaction.
+   *
+   * @param request the request containing the details of the approved NFT transfer transaction
+   * @return the result of the approved NFT transfer transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull NftApprovedTransferResult executeNftApprovedTransferTransaction(
+      @NonNull final NftApprovedTransferRequest request) throws HieroException;
+
+  /**
+   * Executes a token airdrop transaction for NFTs. The request may target a single receiver or map
+   * each serial to a different receiver.
+   *
+   * @param request the request containing the details of the NFT airdrop transaction
+   * @return the result of the token airdrop transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull TokenAirdropResult executeTokenAirdropTransaction(
+      @NonNull final TokenAirdropRequest request) throws HieroException;
+
+  /**
+   * Executes a token cancel airdrop transaction for pending NFT airdrops. The sender of each
+   * pending airdrop must sign the transaction.
+   *
+   * @param request the request containing the pending NFT airdrops to cancel
+   * @return the result of the token cancel airdrop transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull TokenCancelAirdropResult executeTokenCancelAirdropTransaction(
+      @NonNull final TokenCancelAirdropRequest request) throws HieroException;
+
+  /**
+   * Executes a token reject transaction for NFTs. The rejected NFTs are returned to the treasury of
+   * the NFT type without charging custom fees.
+   *
+   * @param request the request containing the details of the NFT reject transaction
+   * @return the result of the token reject transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull TokenRejectResult executeTokenRejectTransaction(
+      @NonNull final TokenRejectRequest request) throws HieroException;
+
+  /**
    * Executes an HBAR transfer transaction.
    *
    * @param request the request containing the details of the HBAR transfer transaction
@@ -419,6 +484,16 @@ public interface ProtocolLayerClient {
    */
   @NonNull HbarAllowanceApproveResult executeHbarAllowanceApproveTransaction(
       @NonNull final HbarAllowanceApproveRequest request) throws HieroException;
+
+  /**
+   * Executes an NFT allowance approve transaction.
+   *
+   * @param request the request containing the details of the NFT allowance approve transaction
+   * @return the result of the NFT allowance approve transaction
+   * @throws HieroException if the transaction could not be executed
+   */
+  @NonNull NftAllowanceApproveResult executeNftAllowanceApproveTransaction(
+      @NonNull final NftAllowanceApproveRequest request) throws HieroException;
 
   /**
    * Executes an NFT allowance delete transaction.

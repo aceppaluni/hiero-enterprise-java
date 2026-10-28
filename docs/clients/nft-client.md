@@ -1,6 +1,6 @@
 # NFT Client
 
-`NftClient` provides APIs for managing Hiero non-fungible tokens (NFTs), including NFT type creation, account association and dissociation, minting, burning, wiping, pausing, unpausing, transferring NFTs between accounts, updating NFT metadata and types, and deleting NFT types.
+`NftClient` provides APIs for managing Hiero non-fungible tokens (NFTs), including NFT type creation, account association and dissociation, minting, burning, wiping, transferring and airdropping NFTs between accounts, canceling pending NFT airdrops, rejecting unwanted NFTs, approving NFT allowances for spender accounts, updating NFT metadata and types, and deleting NFT types.
 
 !!! note
 
@@ -30,6 +30,10 @@
 | `createNftType(String name, String symbol, AccountId treasuryAccountId, PrivateKey treasuryKey, PrivateKey supplierKey, PrivateKey metadataKey, PrivateKey kycKey)` | Creates an NFT type with optional metadata and KYC keys. |
 | `createNftType(String name, String symbol, String treasuryAccountId, String treasuryKey, String supplierKey, String metadataKey, String kycKey)` | Creates an NFT type with optional metadata and KYC keys as strings. |
 | `createNftType(String name, String symbol, Account treasuryAccount, PrivateKey supplierKey, PrivateKey metadataKey, PrivateKey kycKey)` | Creates an NFT type using an existing treasury account with optional metadata and KYC keys. |
+| `createNftType(String name, String symbol, PrivateKey supplierKey, PrivateKey metadataKey, PrivateKey kycKey, PrivateKey feeScheduleKey)` | Creates an NFT type with optional metadata, KYC, and fee schedule keys; operator is treasury. |
+| `createNftType(String name, String symbol, AccountId treasuryAccountId, PrivateKey treasuryKey, PrivateKey supplierKey, PrivateKey metadataKey, PrivateKey kycKey, PrivateKey feeScheduleKey)` | Creates an NFT type with optional metadata, KYC, and fee schedule keys. |
+| `createNftType(String name, String symbol, String treasuryAccountId, String treasuryKey, String supplierKey, String metadataKey, String kycKey, String feeScheduleKey)` | Creates an NFT type with optional metadata, KYC, and fee schedule keys as strings. |
+| `createNftType(String name, String symbol, Account treasuryAccount, PrivateKey supplierKey, PrivateKey metadataKey, PrivateKey kycKey, PrivateKey feeScheduleKey)` | Creates an NFT type using an existing treasury account with optional metadata, KYC, and fee schedule keys. |
 | `associateNft(TokenId tokenId, AccountId accountId, PrivateKey accountKey)` | Associates an account with an NFT type. |
 | `associateNft(String tokenId, String accountId, String accountKey)` | Associates an account with an NFT type using string identifiers. |
 | `associateNft(TokenId tokenId, Account account)` | Associates an account object with an NFT type. |
@@ -78,10 +82,46 @@
 | `transferNft(TokenId tokenId, long serialNumber, Account fromAccount, AccountId toAccountId)` | Transfers an NFT using an account object as sender. |
 | `transferNfts(TokenId tokenId, List<Long> serialNumbers, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)` | Transfers multiple NFTs between accounts. |
 | `transferNfts(TokenId tokenId, List<Long> serialNumbers, Account fromAccount, AccountId toAccountId)` | Transfers multiple NFTs using an account object as sender. |
+| `transferApprovedNft(TokenId tokenId, long serialNumber, AccountId ownerAccountId, AccountId spenderAccountId, PrivateKey spenderAccountKey, AccountId toAccountId)` | Transfers an NFT on behalf of its owner using a spender allowance. |
+| `transferApprovedNft(TokenId tokenId, long serialNumber, AccountId ownerAccountId, Account spenderAccount, AccountId toAccountId)` | Transfers an NFT on behalf of its owner using an account object as spender. |
+| `transferApprovedNfts(TokenId tokenId, List<Long> serialNumbers, AccountId ownerAccountId, AccountId spenderAccountId, PrivateKey spenderAccountKey, AccountId toAccountId)` | Transfers multiple NFTs on behalf of their owner using a spender allowance. |
+| `transferApprovedNfts(TokenId tokenId, List<Long> serialNumbers, AccountId ownerAccountId, Account spenderAccount, AccountId toAccountId)` | Transfers multiple NFTs on behalf of their owner using an account object as spender. |
+| `transferApprovedNfts(Map<TokenId, Map<Long, AccountId>> nftTransfers, AccountId ownerAccountId, AccountId spenderAccountId, PrivateKey spenderAccountKey)` | Transfers NFTs of multiple NFT types on behalf of their owner, each to its own receiver. |
+| `transferApprovedNfts(Map<TokenId, Map<Long, AccountId>> nftTransfers, AccountId ownerAccountId, Account spenderAccount)` | Transfers NFTs of multiple NFT types on behalf of their owner using an account object as spender. |
+| `airdropNft(TokenId tokenId, long serialNumber, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)` | Airdrops an NFT between accounts. May become pending if the receiver lacks auto-association slots. |
+| `airdropNft(TokenId tokenId, long serialNumber, Account fromAccount, AccountId toAccountId)` | Airdrops an NFT using an account object as sender. |
+| `airdropNfts(TokenId tokenId, List<Long> serialNumbers, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)` | Airdrops multiple NFTs to a single receiver. |
+| `airdropNfts(TokenId tokenId, List<Long> serialNumbers, Account fromAccount, AccountId toAccountId)` | Airdrops multiple NFTs to a single receiver using an account object as sender. |
+| `airdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, AccountId fromAccountId, PrivateKey fromAccountKey)` | Airdrops NFTs to one or more receivers (serial → account map). |
+| `airdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, Account fromAccount)` | Airdrops NFTs to one or more receivers using an account object as sender. |
+| `cancelAirdropNft(TokenId tokenId, long serialNumber, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)` | Cancels a pending NFT airdrop. The sender must sign. |
+| `cancelAirdropNft(TokenId tokenId, long serialNumber, Account fromAccount, AccountId toAccountId)` | Cancels a pending NFT airdrop using an account object as sender. |
+| `cancelAirdropNfts(TokenId tokenId, List<Long> serialNumbers, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)` | Cancels pending NFT airdrops to a single receiver. |
+| `cancelAirdropNfts(TokenId tokenId, List<Long> serialNumbers, Account fromAccount, AccountId toAccountId)` | Cancels pending NFT airdrops to a single receiver using an account object as sender. |
+| `cancelAirdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, AccountId fromAccountId, PrivateKey fromAccountKey)` | Cancels pending NFT airdrops (serial → receiver map). |
+| `cancelAirdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, Account fromAccount)` | Cancels pending NFT airdrops using an account object as sender. |
+| `rejectNft(TokenId tokenId, long serialNumber, AccountId ownerAccountId, PrivateKey ownerAccountKey)` | Rejects an NFT (e.g. an unwanted airdrop) and returns it to the treasury. |
+| `rejectNft(TokenId tokenId, long serialNumber, Account ownerAccount)` | Rejects an NFT using an account object as owner. |
+| `rejectNfts(TokenId tokenId, List<Long> serialNumbers, AccountId ownerAccountId, PrivateKey ownerAccountKey)` | Rejects up to 10 NFTs and returns them to the treasury. |
+| `rejectNfts(TokenId tokenId, List<Long> serialNumbers, Account ownerAccount)` | Rejects up to 10 NFTs using an account object as owner. |
+| `approveNftAllowance(TokenId tokenId, long serialNumber, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)` | Approves a spender to transfer a single NFT on behalf of the owner. The owner must sign. |
+| `approveNftAllowance(TokenId tokenId, long serialNumber, Account ownerAccount, AccountId spenderAccountId)` | Approves a spender for a single NFT using an account object as owner. |
+| `approveNftAllowances(TokenId tokenId, List<Long> serialNumbers, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)` | Approves a spender for several NFT serials of one NFT type. |
+| `approveNftAllowances(TokenId tokenId, List<Long> serialNumbers, Account ownerAccount, AccountId spenderAccountId)` | Approves a spender for several NFT serials using an account object as owner. |
+| `approveNftAllowances(Map<TokenId, List<Long>> serialNumbers, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)` | Approves a spender for NFT serials of several NFT types in one transaction (max 20 serials in total). |
+| `approveNftAllowances(Map<TokenId, List<Long>> serialNumbers, Account ownerAccount, AccountId spenderAccountId)` | Approves a spender for NFT serials of several NFT types using an account object as owner. |
+| `approveNftAllowanceAllSerials(TokenId tokenId, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)` | Approves a spender for all serials of an NFT type, including serials received later. |
+| `approveNftAllowanceAllSerials(TokenId tokenId, Account ownerAccount, AccountId spenderAccountId)` | Approves a spender for all serials of an NFT type using an account object as owner. |
+| `approveNftAllowanceAllSerials(List<TokenId> tokenIds, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)` | Approves a spender for all serials of several NFT types in one transaction (max 20 NFT types). |
+| `approveNftAllowanceAllSerials(List<TokenId> tokenIds, Account ownerAccount, AccountId spenderAccountId)` | Approves a spender for all serials of several NFT types using an account object as owner. |
 | `updateNftType(TokenId tokenId, String name, String symbol)` | Updates an NFT type name and symbol using the operator account as admin key. |
 | `updateNftType(TokenId tokenId, String name, String symbol, PrivateKey adminKey)` | Updates an NFT type name and symbol using a custom admin key. |
 | `updateNftType(String tokenId, String name, String symbol)` | Updates an NFT type using a token ID string and the operator admin key. |
 | `updateNftType(String tokenId, String name, String symbol, String adminKey)` | Updates an NFT type using string token ID and admin key. |
+| `updateNftFeeSchedule(TokenId tokenId, List<CustomFee> customFees)` | Replaces the custom fee schedule of an NFT type using the operator account key; the NFT type must have been created with the operator key as fee schedule key. |
+| `updateNftFeeSchedule(TokenId tokenId, List<CustomFee> customFees, PrivateKey feeScheduleKey)` | Replaces the custom fee schedule of an NFT type using a custom fee schedule key. |
+| `updateNftFeeSchedule(String tokenId, List<CustomFee> customFees)` | Replaces the custom fee schedule using a token ID string and the operator account key; the NFT type must have been created with the operator key as fee schedule key. |
+| `updateNftFeeSchedule(String tokenId, List<CustomFee> customFees, String feeScheduleKey)` | Replaces the custom fee schedule using string token ID and fee schedule key. |
 | `updateNftMetadata(TokenId tokenId, long serialNumber, byte[] metadata)` | Updates metadata for a single NFT using the operator key. |
 | `updateNftMetadata(TokenId tokenId, long serialNumber, PrivateKey metadataKey, byte[] metadata)` | Updates metadata for a single NFT using a custom metadata (or supply) key. |
 | `updateNftsMetadata(TokenId tokenId, List<Long> serialNumbers, byte[] metadata)` | Updates metadata for up to 10 NFT serials using the operator key. |
@@ -471,6 +511,207 @@ receiver
 
 ---
 
+## Transfer Approved NFT
+
+Transfers one or more NFTs on behalf of their owner using an approved `TransferTransaction`. The owner must first grant the spender an allowance for the NFTs (`AccountAllowanceApproveTransaction`). The spender is the payer of the transaction and must sign it; the owner does not need to sign (see [Transfer tokens](https://docs.hedera.com/native/tokens/transfer)). Hedera limits a single transfer transaction to at most 10 NFT transfers.
+
+```java title="transferApprovedNft(TokenId tokenId, long serialNumber, AccountId ownerAccountId, AccountId spenderAccountId, PrivateKey spenderAccountKey, AccountId toAccountId)"
+AccountId owner = AccountId.fromString("0.0.1001");
+AccountId spender = AccountId.fromString("0.0.1002");
+AccountId receiver = AccountId.fromString("0.0.1003");
+
+nftClient.transferApprovedNft(
+    tokenId,
+    1L,
+    owner,
+    spender,
+    spenderKey,
+    receiver
+);
+```
+
+```java title="transferApprovedNfts(TokenId tokenId, List<Long> serialNumbers, AccountId ownerAccountId, Account spenderAccount, AccountId toAccountId)"
+Account spender = accountClient.createAccount();
+List<Long> serialNumbers = List.of(1L, 2L);
+
+nftClient.transferApprovedNfts(tokenId, serialNumbers, owner, spender, receiver);
+```
+
+NFTs of multiple NFT types can be transferred to different receivers in a single transaction:
+
+```java title="transferApprovedNfts(Map<TokenId, Map<Long, AccountId>> nftTransfers, AccountId ownerAccountId, Account spenderAccount)"
+Map<TokenId, Map<Long, AccountId>> nftTransfers =
+    Map.of(
+        tokenId1, Map.of(1L, receiver1, 2L, receiver2),
+        tokenId2, Map.of(1L, receiver2));
+
+nftClient.transferApprovedNfts(nftTransfers, owner, spender);
+```
+
+---
+
+## Airdrop NFT
+
+Airdrops ownership of one or more NFTs to one or more receivers using `TokenAirdropTransaction`. Unlike a standard transfer, if a receiver is not associated and has no available auto-association slots, the airdrop may become pending until claimed or canceled. Hedera limits a single airdrop transaction to at most 20 NFT ownership changes (see [Airdrop a token](https://docs.hedera.com/native/tokens/airdrop)).
+
+```java title="airdropNft(TokenId tokenId, long serialNumber, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)"
+AccountId sender = AccountId.fromString("0.0.1001");
+AccountId receiver = AccountId.fromString("0.0.1002");
+
+nftClient.airdropNft(
+    tokenId,
+    1L,
+    sender,
+    PrivateKey.generateED25519(),
+    receiver
+);
+```
+
+```java title="airdropNfts(TokenId tokenId, List<Long> serialNumbers, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)"
+List<Long> serialNumbers = List.of(1L, 2L);
+
+nftClient.airdropNfts(
+    tokenId,
+    serialNumbers,
+    sender,
+    PrivateKey.generateED25519(),
+    receiver
+);
+```
+
+```java title="airdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, AccountId fromAccountId, PrivateKey fromAccountKey)"
+AccountId alice = AccountId.fromString("0.0.1002");
+AccountId bob = AccountId.fromString("0.0.1003");
+Map<Long, AccountId> serialNumberToAccountId = Map.of(1L, alice, 2L, bob);
+
+nftClient.airdropNfts(
+    tokenId,
+    serialNumberToAccountId,
+    sender,
+    PrivateKey.generateED25519()
+);
+```
+
+---
+
+## Cancel Airdrop NFT
+
+Cancels one or more pending NFT airdrops using `TokenCancelAirdropTransaction`. Each cancellation is identified by the NFT type, serial number, sender (the account that initiated the airdrop), and receiver (the account that was to receive the NFT). The sender must sign the transaction. Hedera limits a single cancel transaction to at most 10 pending airdrop IDs (see [Cancel a token](https://docs.hedera.com/native/tokens/cancel)).
+
+```java title="cancelAirdropNft(TokenId tokenId, long serialNumber, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)"
+AccountId sender = AccountId.fromString("0.0.1001");
+AccountId receiver = AccountId.fromString("0.0.1002");
+
+nftClient.cancelAirdropNft(
+    tokenId,
+    1L,
+    sender,
+    PrivateKey.generateED25519(),
+    receiver
+);
+```
+
+```java title="cancelAirdropNfts(TokenId tokenId, List<Long> serialNumbers, AccountId fromAccountId, PrivateKey fromAccountKey, AccountId toAccountId)"
+List<Long> serialNumbers = List.of(1L, 2L);
+
+nftClient.cancelAirdropNfts(
+    tokenId,
+    serialNumbers,
+    sender,
+    PrivateKey.generateED25519(),
+    receiver
+);
+```
+
+```java title="cancelAirdropNfts(TokenId tokenId, Map<Long, AccountId> serialNumberToAccountId, AccountId fromAccountId, PrivateKey fromAccountKey)"
+AccountId alice = AccountId.fromString("0.0.1002");
+AccountId bob = AccountId.fromString("0.0.1003");
+Map<Long, AccountId> serialNumberToAccountId = Map.of(1L, alice, 2L, bob);
+
+nftClient.cancelAirdropNfts(
+    tokenId,
+    serialNumberToAccountId,
+    sender,
+    PrivateKey.generateED25519()
+);
+```
+
+---
+
+## Reject NFT
+
+Rejects one or more NFTs held by an account, for example unwanted airdrops, using `TokenRejectTransaction`. Rejected NFTs are returned to the treasury of the NFT type without charging custom fees. Rejection does not dissociate the account from the NFT type, and it fails if the NFT type is paused or the account is frozen for it. Hedera limits a single reject transaction to at most 10 rejections (see [Reject a token](https://docs.hedera.com/native/tokens/reject-airdrop)).
+
+```java title="rejectNft(TokenId tokenId, long serialNumber, AccountId ownerAccountId, PrivateKey ownerAccountKey)"
+AccountId owner = AccountId.fromString("0.0.1002");
+
+nftClient.rejectNft(
+    tokenId,
+    1L,
+    owner,
+    PrivateKey.generateED25519()
+);
+```
+
+```java title="rejectNfts(TokenId tokenId, List<Long> serialNumbers, Account ownerAccount)"
+Account owner = accountClient.createAccount();
+List<Long> serialNumbers = List.of(1L, 2L);
+
+nftClient.rejectNfts(tokenId, serialNumbers, owner);
+```
+
+---
+
+## Approve NFT Allowance
+
+Approves an allowance so a spender account can transfer NFTs on behalf of the owner, using `AccountAllowanceApproveTransaction`. The owner must sign the transaction. An allowance can be granted for a single serial, for a list of serials, or for all serials of an NFT type (including serials the owner receives later). See [Approve an allowance](https://docs.hedera.com/native/accounts/allowances) for the network semantics.
+
+```java title="approveNftAllowance(TokenId tokenId, long serialNumber, AccountId ownerAccountId, PrivateKey ownerAccountKey, AccountId spenderAccountId)"
+AccountId owner = AccountId.fromString("0.0.1001");
+AccountId spender = AccountId.fromString("0.0.1002");
+
+nftClient.approveNftAllowance(
+    tokenId,
+    1L,
+    owner,
+    PrivateKey.generateED25519(),
+    spender
+);
+```
+
+```java title="approveNftAllowances(TokenId tokenId, List<Long> serialNumbers, Account ownerAccount, AccountId spenderAccountId)"
+List<Long> serialNumbers = List.of(1L, 2L);
+
+nftClient.approveNftAllowances(tokenId, serialNumbers, ownerAccount, spender);
+```
+
+```java title="approveNftAllowances(Map<TokenId, List<Long>> serialNumbers, Account ownerAccount, AccountId spenderAccountId)"
+Map<TokenId, List<Long>> serialNumbers = Map.of(
+    tokenId, List.of(1L, 2L),
+    otherTokenId, List.of(5L)
+);
+
+nftClient.approveNftAllowances(serialNumbers, ownerAccount, spender);
+```
+
+```java title="approveNftAllowanceAllSerials(TokenId tokenId, Account ownerAccount, AccountId spenderAccountId)"
+nftClient.approveNftAllowanceAllSerials(tokenId, ownerAccount, spender);
+```
+
+```java title="approveNftAllowanceAllSerials(List<TokenId> tokenIds, Account ownerAccount, AccountId spenderAccountId)"
+nftClient.approveNftAllowanceAllSerials(List.of(tokenId, otherTokenId), ownerAccount, spender);
+```
+
+!!! note
+
+    A single transaction can contain at most 20 allowances. Each serial number counts as one allowance, and each NFT type approved for all serials counts as one allowance. Requests with more than 20 throw an `IllegalArgumentException`. The default max transaction fee for these requests is 100 HBAR, because approving many allowances costs more than the default fee.
+
+!!! info
+
+    Use `AccountClient.deleteNftAllowance(...)` to remove an allowance that was granted for a specific serial.
+
+---
+
 ## Update NFT Type
 
 Updates properties of an NFT type (token class), such as name and symbol. Requires the admin key set at creation (by default the treasury key). Fields that are not changed are left as-is on the network.
@@ -490,6 +731,59 @@ nftClient.updateNftType(tokenId, "Updated Demo NFT", "UDNFT", adminKey);
 !!! info
 
     Provide `adminKey` when the NFT type was created with a custom treasury whose key differs from the configured operator account key.
+
+---
+
+## Update NFT Fee Schedule
+
+Replaces the custom fees (royalty and fixed fees) charged when NFTs of a type are transferred. The given list replaces the whole fee schedule; pass an empty list to remove all custom fees. At most 10 custom fees are allowed. NFT types do not support fractional fees.
+
+The NFT type must have been created with a fee schedule key, and the update must be signed with that key.
+
+```java title="createNftType(..., PrivateKey feeScheduleKey)"
+PrivateKey supplierKey = PrivateKey.generateED25519();
+PrivateKey feeScheduleKey = PrivateKey.generateED25519();
+
+TokenId tokenId = nftClient.createNftType(
+    "Royalty NFT",
+    "RNFT",
+    supplierKey,
+    null,
+    null,
+    feeScheduleKey
+);
+```
+
+```java title="updateNftFeeSchedule(TokenId tokenId, List<CustomFee> customFees, PrivateKey feeScheduleKey)"
+AccountId collector = AccountId.fromString("0.0.1001");
+
+CustomRoyaltyFee royaltyFee = new CustomRoyaltyFee()
+    .setNumerator(5)
+    .setDenominator(100)
+    .setFallbackFee(new CustomFixedFee().setHbarAmount(Hbar.from(1)))
+    .setFeeCollectorAccountId(collector);
+
+nftClient.updateNftFeeSchedule(tokenId, List.of(royaltyFee), feeScheduleKey);
+```
+
+```java title="updateNftFeeSchedule(TokenId tokenId, List<CustomFee> customFees)"
+// The operator key must have been passed as feeScheduleKey at creation
+PrivateKey operatorKey = hieroContext.getOperatorAccount().privateKey();
+TokenId tokenId = nftClient.createNftType("Royalty NFT", "RNFT", operatorKey, null, null, operatorKey);
+
+nftClient.updateNftFeeSchedule(tokenId, List.of(royaltyFee));
+
+// Removes all custom fees
+nftClient.updateNftFeeSchedule(tokenId, List.of());
+```
+
+!!! warning
+
+    The overloads without a `feeScheduleKey` parameter sign with the operator account key. They only succeed if the operator key was passed as `feeScheduleKey` when the NFT type was created. Unlike the admin key, no fee schedule key is set by default: NFT types created with the other `createNftType` overloads have no fee schedule key, so their fees can never be updated. For NFT types with a different fee schedule key, pass that key explicitly.
+
+!!! info
+
+    `CustomFee`, `CustomFixedFee`, and `CustomRoyaltyFee` are the Hiero SDK types from `com.hedera.hashgraph.sdk`. Removing fees from an NFT type that has none fails with `CUSTOM_SCHEDULE_ALREADY_HAS_NO_FEES`.
 
 ---
 

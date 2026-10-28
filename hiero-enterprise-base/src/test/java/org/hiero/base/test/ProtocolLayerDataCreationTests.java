@@ -5,6 +5,9 @@ import static org.hiero.base.implementation.ProtocolLayerClientImpl.MAX_GAS_LIMI
 import com.hedera.hashgraph.sdk.AccountId;
 import com.hedera.hashgraph.sdk.ContractFunctionResult;
 import com.hedera.hashgraph.sdk.ContractId;
+import com.hedera.hashgraph.sdk.CustomFee;
+import com.hedera.hashgraph.sdk.CustomFixedFee;
+import com.hedera.hashgraph.sdk.CustomRoyaltyFee;
 import com.hedera.hashgraph.sdk.EvmHookStorageUpdate;
 import com.hedera.hashgraph.sdk.FileId;
 import com.hedera.hashgraph.sdk.Hbar;
@@ -22,9 +25,14 @@ import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import org.hiero.base.data.Account;
 import org.hiero.base.data.ContractParam;
 import org.hiero.base.protocol.data.AccountBalanceRequest;
@@ -61,25 +69,34 @@ import org.hiero.base.protocol.data.HbarTransferRequest;
 import org.hiero.base.protocol.data.HbarTransferResult;
 import org.hiero.base.protocol.data.HookStoreRequest;
 import org.hiero.base.protocol.data.HookStoreResult;
+import org.hiero.base.protocol.data.NftAllowanceApproveRequest;
+import org.hiero.base.protocol.data.NftAllowanceApproveResult;
 import org.hiero.base.protocol.data.NftAllowanceDeleteRequest;
 import org.hiero.base.protocol.data.NftAllowanceDeleteResult;
+import org.hiero.base.protocol.data.NftApprovedTransferRequest;
+import org.hiero.base.protocol.data.TokenAirdropRequest;
+import org.hiero.base.protocol.data.TokenAirdropResult;
 import org.hiero.base.protocol.data.TokenAssociateRequest;
 import org.hiero.base.protocol.data.TokenAssociateResult;
 import org.hiero.base.protocol.data.TokenBurnRequest;
 import org.hiero.base.protocol.data.TokenBurnResult;
+import org.hiero.base.protocol.data.TokenCancelAirdropRequest;
 import org.hiero.base.protocol.data.TokenCreateRequest;
 import org.hiero.base.protocol.data.TokenCreateResult;
 import org.hiero.base.protocol.data.TokenDeleteRequest;
 import org.hiero.base.protocol.data.TokenDeleteResult;
 import org.hiero.base.protocol.data.TokenDissociateRequest;
 import org.hiero.base.protocol.data.TokenDissociateResult;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateRequest;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateResult;
 import org.hiero.base.protocol.data.TokenFreezeRequest;
 import org.hiero.base.protocol.data.TokenFreezeResult;
 import org.hiero.base.protocol.data.TokenGrantKycRequest;
 import org.hiero.base.protocol.data.TokenGrantKycResult;
 import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
-import org.hiero.base.protocol.data.TokenPauseRequest;
+import org.hiero.base.protocol.data.TokenRejectRequest;
+import org.hiero.base.protocol.data.TokenRejectResult;
 import org.hiero.base.protocol.data.TokenRevokeKycRequest;
 import org.hiero.base.protocol.data.TokenRevokeKycResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
@@ -909,97 +926,132 @@ public class ProtocolLayerDataCreationTests {
     final FileId fileId = FileId.fromString(fileIdString);
     final ContractParam<Long> contractParam = ContractParam.int32(1);
     final List<ContractParam<?>> constructorParams = List.of(contractParam);
+    final PrivateKey adminKey = PrivateKey.generateECDSA();
 
     // then
     Assertions.assertDoesNotThrow(
-        () -> ContractCreateRequest.of(fileIdString, maxTransactionFee, gas));
+        () -> ContractCreateRequest.of(fileIdString, maxTransactionFee, gas, adminKey));
     Assertions.assertDoesNotThrow(
-        () -> ContractCreateRequest.of(fileIdString, maxTransactionFee, gas, contractParam));
+        () ->
+            ContractCreateRequest.of(
+                fileIdString, maxTransactionFee, gas, adminKey, contractParam));
     Assertions.assertDoesNotThrow(
-        () -> ContractCreateRequest.of(fileIdString, maxTransactionFee, gas, constructorParams));
-    Assertions.assertDoesNotThrow(() -> ContractCreateRequest.of(fileId, maxTransactionFee, gas));
+        () ->
+            ContractCreateRequest.of(
+                fileIdString, maxTransactionFee, gas, adminKey, constructorParams));
     Assertions.assertDoesNotThrow(
-        () -> ContractCreateRequest.of(fileId, maxTransactionFee, gas, contractParam));
+        () -> ContractCreateRequest.of(fileId, maxTransactionFee, gas, adminKey));
     Assertions.assertDoesNotThrow(
-        () -> ContractCreateRequest.of(fileId, maxTransactionFee, gas, constructorParams));
+        () -> ContractCreateRequest.of(fileId, maxTransactionFee, gas, adminKey, contractParam));
+    Assertions.assertDoesNotThrow(
+        () ->
+            ContractCreateRequest.of(fileId, maxTransactionFee, gas, adminKey, constructorParams));
+
     Assertions.assertDoesNotThrow(
         () ->
             new ContractCreateRequest(
-                maxTransactionFee, transactionValidDuration, fileId, gas, constructorParams));
+                maxTransactionFee,
+                transactionValidDuration,
+                fileId,
+                gas,
+                adminKey,
+                constructorParams));
     Assertions.assertThrows(
         NullPointerException.class,
-        () -> ContractCreateRequest.of((String) null, maxTransactionFee, gas));
+        () -> ContractCreateRequest.of((String) null, maxTransactionFee, gas, adminKey));
     Assertions.assertThrows(
-        NullPointerException.class, () -> ContractCreateRequest.of(fileId, null, gas));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of((String) null, maxTransactionFee, gas, contractParam));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of((String) null, maxTransactionFee, gas, constructorParams));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of(fileIdString, null, gas, constructorParams));
+        NullPointerException.class, () -> ContractCreateRequest.of(fileId, null, gas, adminKey));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             ContractCreateRequest.of(
-                fileIdString, maxTransactionFee, gas, (ContractParam<?>) null));
+                (String) null, maxTransactionFee, gas, adminKey, contractParam));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             ContractCreateRequest.of(
-                fileIdString, maxTransactionFee, gas, (List<ContractParam<?>>) null));
+                (String) null, maxTransactionFee, gas, adminKey, constructorParams));
     Assertions.assertThrows(
         NullPointerException.class,
-        () -> ContractCreateRequest.of((FileId) null, maxTransactionFee, gas));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of((FileId) null, maxTransactionFee, gas, contractParam));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of((FileId) null, maxTransactionFee, gas, constructorParams));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> ContractCreateRequest.of(fileId, maxTransactionFee, gas, (ContractParam<?>) null));
+        () -> ContractCreateRequest.of(fileIdString, null, gas, adminKey, constructorParams));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             ContractCreateRequest.of(
-                fileId, maxTransactionFee, gas, (List<ContractParam<?>>) null));
+                fileIdString, maxTransactionFee, gas, adminKey, (ContractParam<?>) null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ContractCreateRequest.of((FileId) null, maxTransactionFee, gas, adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            ContractCreateRequest.of(
+                (FileId) null, maxTransactionFee, gas, adminKey, contractParam));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            ContractCreateRequest.of(
+                (FileId) null, maxTransactionFee, gas, adminKey, constructorParams));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            ContractCreateRequest.of(
+                fileId, maxTransactionFee, gas, adminKey, (ContractParam<?>) null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            ContractCreateRequest.of(
+                fileId, maxTransactionFee, gas, adminKey, (List<ContractParam<?>>) null));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             new ContractCreateRequest(
-                null, transactionValidDuration, fileId, gas, constructorParams));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () -> new ContractCreateRequest(maxTransactionFee, null, fileId, gas, constructorParams));
+                null, transactionValidDuration, fileId, gas, adminKey, constructorParams));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             new ContractCreateRequest(
-                maxTransactionFee, transactionValidDuration, null, gas, constructorParams));
+                maxTransactionFee, null, fileId, gas, adminKey, constructorParams));
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
             new ContractCreateRequest(
-                maxTransactionFee, transactionValidDuration, fileId, gas, null));
+                maxTransactionFee,
+                transactionValidDuration,
+                null,
+                gas,
+                adminKey,
+                constructorParams));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new ContractCreateRequest(
+                maxTransactionFee, transactionValidDuration, fileId, gas, adminKey, null));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
             new ContractCreateRequest(
-                Hbar.from(-100), transactionValidDuration, fileId, gas, constructorParams));
+                Hbar.from(-100),
+                transactionValidDuration,
+                fileId,
+                gas,
+                adminKey,
+                constructorParams));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
             new ContractCreateRequest(
-                maxTransactionFee, Duration.ZERO, fileId, gas, constructorParams));
+                maxTransactionFee, Duration.ZERO, fileId, gas, adminKey, constructorParams));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
             new ContractCreateRequest(
-                maxTransactionFee, Duration.ofSeconds(-1), fileId, gas, constructorParams));
+                maxTransactionFee,
+                Duration.ofSeconds(-1),
+                fileId,
+                gas,
+                adminKey,
+                constructorParams));
   }
 
   @Test
@@ -1030,10 +1082,11 @@ public class ProtocolLayerDataCreationTests {
     final ContractId contractId = ContractId.fromString(contractIdAsString);
     final ContractId transferFeeToContractId = ContractId.fromString("0.0.54321");
     final AccountId transferFeeToAccountId = new AccountId(0, 0, 54321);
+    final PrivateKey adminKey = PrivateKey.generateECDSA();
 
     // then
-    Assertions.assertDoesNotThrow(() -> ContractDeleteRequest.of(contractIdAsString));
-    Assertions.assertDoesNotThrow(() -> ContractDeleteRequest.of(contractId));
+    Assertions.assertDoesNotThrow(
+        () -> ContractDeleteRequest.of(contractId, transferFeeToContractId, adminKey));
     Assertions.assertDoesNotThrow(
         () ->
             new ContractDeleteRequest(
@@ -1041,7 +1094,8 @@ public class ProtocolLayerDataCreationTests {
                 transactionValidDuration,
                 contractId,
                 transferFeeToContractId,
-                transferFeeToAccountId));
+                transferFeeToAccountId,
+                adminKey));
     Assertions.assertDoesNotThrow(
         () ->
             new ContractDeleteRequest(
@@ -1049,7 +1103,8 @@ public class ProtocolLayerDataCreationTests {
                 transactionValidDuration,
                 contractId,
                 null,
-                transferFeeToAccountId));
+                transferFeeToAccountId,
+                adminKey));
     Assertions.assertDoesNotThrow(
         () ->
             new ContractDeleteRequest(
@@ -1057,42 +1112,64 @@ public class ProtocolLayerDataCreationTests {
                 transactionValidDuration,
                 contractId,
                 transferFeeToContractId,
+                null,
+                adminKey));
+    Assertions.assertDoesNotThrow(
+        () ->
+            new ContractDeleteRequest(
+                maxTransactionFee, transactionValidDuration, contractId, null, null, adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ContractDeleteRequest.of(null, transferFeeToContractId, adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ContractDeleteRequest.of(null, transferFeeToAccountId, adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ContractDeleteRequest.of(contractId, transferFeeToContractId, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> ContractDeleteRequest.of(contractId, transferFeeToAccountId, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new ContractDeleteRequest(
+                null,
+                transactionValidDuration,
+                contractId,
+                transferFeeToContractId,
+                transferFeeToAccountId,
+                adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new ContractDeleteRequest(
+                maxTransactionFee,
+                null,
+                contractId,
+                transferFeeToContractId,
+                transferFeeToAccountId,
+                adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new ContractDeleteRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                null,
+                transferFeeToContractId,
+                transferFeeToAccountId,
+                adminKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new ContractDeleteRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                contractId,
+                transferFeeToContractId,
+                transferFeeToAccountId,
                 null));
-    Assertions.assertDoesNotThrow(
-        () ->
-            new ContractDeleteRequest(
-                maxTransactionFee, transactionValidDuration, contractId, null, null));
-    Assertions.assertThrows(
-        NullPointerException.class, () -> ContractDeleteRequest.of((String) null));
-    Assertions.assertThrows(
-        NullPointerException.class, () -> ContractDeleteRequest.of((ContractId) null));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () ->
-            new ContractDeleteRequest(
-                null,
-                transactionValidDuration,
-                contractId,
-                transferFeeToContractId,
-                transferFeeToAccountId));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () ->
-            new ContractDeleteRequest(
-                maxTransactionFee,
-                null,
-                contractId,
-                transferFeeToContractId,
-                transferFeeToAccountId));
-    Assertions.assertThrows(
-        NullPointerException.class,
-        () ->
-            new ContractDeleteRequest(
-                maxTransactionFee,
-                transactionValidDuration,
-                null,
-                transferFeeToContractId,
-                transferFeeToAccountId));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -1101,7 +1178,8 @@ public class ProtocolLayerDataCreationTests {
                 transactionValidDuration,
                 contractId,
                 transferFeeToContractId,
-                transferFeeToAccountId));
+                transferFeeToAccountId,
+                adminKey));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -1110,7 +1188,8 @@ public class ProtocolLayerDataCreationTests {
                 Duration.ZERO,
                 contractId,
                 transferFeeToContractId,
-                transferFeeToAccountId));
+                transferFeeToAccountId,
+                adminKey));
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -1119,7 +1198,8 @@ public class ProtocolLayerDataCreationTests {
                 Duration.ofSeconds(-1),
                 contractId,
                 transferFeeToContractId,
-                transferFeeToAccountId));
+                transferFeeToAccountId,
+                adminKey));
   }
 
   @Test
@@ -1224,6 +1304,28 @@ public class ProtocolLayerDataCreationTests {
   }
 
   @Test
+  public void testTokenAirdropResultCreation() {
+    final TransactionId transactionId = TransactionId.generate(new AccountId(0, 0, 12345));
+    final Status status = Status.SUCCESS;
+
+    Assertions.assertDoesNotThrow(() -> new TokenAirdropResult(transactionId, status));
+    Assertions.assertThrows(NullPointerException.class, () -> new TokenAirdropResult(null, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new TokenAirdropResult(transactionId, null));
+  }
+
+  @Test
+  public void testTokenRejectResultCreation() {
+    final TransactionId transactionId = TransactionId.generate(new AccountId(0, 0, 12345));
+    final Status status = Status.SUCCESS;
+
+    Assertions.assertDoesNotThrow(() -> new TokenRejectResult(transactionId, status));
+    Assertions.assertThrows(NullPointerException.class, () -> new TokenRejectResult(null, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new TokenRejectResult(transactionId, null));
+  }
+
+  @Test
   public void testHbarTransferResultCreation() {
     final TransactionId transactionId = TransactionId.generate(new AccountId(0, 0, 12345));
     final Status status = Status.SUCCESS;
@@ -1244,6 +1346,18 @@ public class ProtocolLayerDataCreationTests {
         NullPointerException.class, () -> new HbarAllowanceApproveResult(null, status));
     Assertions.assertThrows(
         NullPointerException.class, () -> new HbarAllowanceApproveResult(transactionId, null));
+  }
+
+  @Test
+  public void testNftAllowanceApproveResultCreation() {
+    final TransactionId transactionId = TransactionId.generate(AccountId.fromString("0.0.12345"));
+    final Status status = Status.SUCCESS;
+
+    Assertions.assertDoesNotThrow(() -> new NftAllowanceApproveResult(transactionId, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new NftAllowanceApproveResult(null, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new NftAllowanceApproveResult(transactionId, null));
   }
 
   @Test
@@ -1676,6 +1790,417 @@ public class ProtocolLayerDataCreationTests {
   }
 
   @Test
+  void testTokenAirdropRequestCreation() {
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final TokenId tokenId = TokenId.fromString("0.0.1234");
+    final List<Long> serials = List.of(1L, 2L);
+    final AccountId sender = AccountId.fromString("0.0.5678");
+    final AccountId receiver = AccountId.fromString("0.0.9876");
+    final AccountId receiver2 = AccountId.fromString("0.0.9877");
+    final PrivateKey senderKey = PrivateKey.generateECDSA();
+    final Map<Long, AccountId> serialToReceiver = Map.of(1L, receiver, 2L, receiver2);
+
+    Assertions.assertDoesNotThrow(
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                serialToReceiver,
+                sender,
+                senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenAirdropRequest.of(tokenId, 1L, sender, receiver, senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenAirdropRequest.of(tokenId, serials, sender, receiver, senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenAirdropRequest.of(tokenId, serialToReceiver, sender, senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                null, transactionValidDuration, tokenId, serialToReceiver, sender, senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee, null, tokenId, serialToReceiver, sender, senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                null,
+                serialToReceiver,
+                sender,
+                senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, null, sender, senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                serialToReceiver,
+                null,
+                senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                serialToReceiver,
+                sender,
+                null));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, Map.of(), sender, senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                Map.of(-1L, receiver),
+                sender,
+                senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                Map.of(0L, receiver),
+                sender,
+                senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> TokenAirdropRequest.of(tokenId, List.of(), sender, receiver, senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                IntStream.rangeClosed(1, 21)
+                    .boxed()
+                    .collect(
+                        java.util.stream.Collectors.toMap(
+                            i -> (long) i, i -> receiver, (a, b) -> a, LinkedHashMap::new)),
+                sender,
+                senderKey));
+  }
+
+  @Test
+  void testTokenCancelAirdropRequestCreation() {
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final TokenId tokenId = TokenId.fromString("0.0.1234");
+    final List<Long> serials = List.of(1L, 2L);
+    final AccountId sender = AccountId.fromString("0.0.5678");
+    final AccountId receiver = AccountId.fromString("0.0.9876");
+    final AccountId receiver2 = AccountId.fromString("0.0.9877");
+    final PrivateKey senderKey = PrivateKey.generateECDSA();
+    final Map<Long, AccountId> serialToReceiver = Map.of(1L, receiver, 2L, receiver2);
+
+    Assertions.assertDoesNotThrow(
+        () ->
+            new TokenCancelAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                serialToReceiver,
+                sender,
+                senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenCancelAirdropRequest.of(tokenId, 1L, sender, receiver, senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenCancelAirdropRequest.of(tokenId, serials, sender, receiver, senderKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenCancelAirdropRequest.of(tokenId, serialToReceiver, sender, senderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenCancelAirdropRequest(
+                null, transactionValidDuration, tokenId, serialToReceiver, sender, senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenCancelAirdropRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, Map.of(), sender, senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenCancelAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                Map.of(-1L, receiver),
+                sender,
+                senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> TokenCancelAirdropRequest.of(tokenId, List.of(), sender, receiver, senderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TokenCancelAirdropRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                IntStream.rangeClosed(1, 11)
+                    .boxed()
+                    .collect(
+                        java.util.stream.Collectors.toMap(
+                            i -> (long) i, i -> receiver, (a, b) -> a, LinkedHashMap::new)),
+                sender,
+                senderKey));
+  }
+
+  @Test
+  void testTokenRejectRequestCreation() {
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final TokenId tokenId = TokenId.fromString("0.0.1234");
+    final List<Long> serials = List.of(1L, 2L);
+    final AccountId owner = AccountId.fromString("0.0.5678");
+    final PrivateKey ownerKey = PrivateKey.generateECDSA();
+
+    Assertions.assertDoesNotThrow(
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, serials, owner, ownerKey));
+    Assertions.assertDoesNotThrow(() -> TokenRejectRequest.of(tokenId, 1L, owner, ownerKey));
+    Assertions.assertDoesNotThrow(() -> TokenRejectRequest.of(tokenId, serials, owner, ownerKey));
+    Assertions.assertDoesNotThrow(
+        () ->
+            TokenRejectRequest.of(
+                tokenId, LongStream.rangeClosed(1, 10).boxed().toList(), owner, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                null, transactionValidDuration, tokenId, serials, owner, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> new TokenRejectRequest(maxTransactionFee, null, tokenId, serials, owner, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee, transactionValidDuration, null, serials, owner, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, null, owner, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, serials, null, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, serials, owner, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenRejectRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                tokenId,
+                Arrays.asList(1L, null),
+                owner,
+                ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> TokenRejectRequest.of(tokenId, List.of(), owner, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class, () -> TokenRejectRequest.of(tokenId, 0L, owner, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class, () -> TokenRejectRequest.of(tokenId, -1L, owner, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> TokenRejectRequest.of(tokenId, List.of(1L, 1L), owner, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TokenRejectRequest.of(
+                tokenId, LongStream.rangeClosed(1, 11).boxed().toList(), owner, ownerKey));
+  }
+
+  @Test
+  void testNftApprovedTransferRequestCreation() {
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final TokenId tokenId = TokenId.fromString("0.0.1234");
+    final List<Long> serials = List.of(1L, 2L);
+    final AccountId owner = AccountId.fromString("0.0.5678");
+    final AccountId spender = AccountId.fromString("0.0.6789");
+    final PrivateKey spenderKey = PrivateKey.generateECDSA();
+    final AccountId receiver = AccountId.fromString("0.0.9876");
+    final Map<TokenId, Map<Long, AccountId>> nftTransfers =
+        Map.of(tokenId, Map.of(1L, receiver, 2L, receiver));
+
+    Assertions.assertDoesNotThrow(
+        () ->
+            new NftApprovedTransferRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                nftTransfers,
+                owner,
+                spender,
+                spenderKey));
+    Assertions.assertDoesNotThrow(
+        () -> NftApprovedTransferRequest.of(tokenId, 1L, owner, spender, spenderKey, receiver));
+    Assertions.assertDoesNotThrow(
+        () ->
+            NftApprovedTransferRequest.of(tokenId, serials, owner, spender, spenderKey, receiver));
+    Assertions.assertDoesNotThrow(
+        () -> NftApprovedTransferRequest.of(nftTransfers, owner, spender, spenderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new NftApprovedTransferRequest(
+                null, transactionValidDuration, nftTransfers, owner, spender, spenderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new NftApprovedTransferRequest(
+                maxTransactionFee, null, nftTransfers, owner, spender, spenderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(null, serials, owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                tokenId, (List<Long>) null, owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, serials, null, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, serials, owner, null, spenderKey, receiver));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, serials, owner, spender, null, receiver));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, serials, owner, spender, spenderKey, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                tokenId, Arrays.asList(1L, null), owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                tokenId, List.of(), owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, 0L, owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftApprovedTransferRequest.of(tokenId, -1L, owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                tokenId, List.of(1L, 1L), owner, spender, spenderKey, receiver));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                tokenId,
+                LongStream.rangeClosed(1, 11).boxed().toList(),
+                owner,
+                spender,
+                spenderKey,
+                receiver));
+  }
+
+  @Test
+  void testNftApprovedTransferRequestCreationWithMultipleNftTypes() {
+    final TokenId tokenId1 = TokenId.fromString("0.0.1234");
+    final TokenId tokenId2 = TokenId.fromString("0.0.1235");
+    final AccountId owner = AccountId.fromString("0.0.5678");
+    final AccountId spender = AccountId.fromString("0.0.6789");
+    final PrivateKey spenderKey = PrivateKey.generateECDSA();
+    final AccountId receiver1 = AccountId.fromString("0.0.9876");
+    final AccountId receiver2 = AccountId.fromString("0.0.9877");
+
+    final NftApprovedTransferRequest request =
+        NftApprovedTransferRequest.of(
+            Map.of(tokenId1, Map.of(1L, receiver1, 2L, receiver2), tokenId2, Map.of(1L, receiver2)),
+            owner,
+            spender,
+            spenderKey);
+    Assertions.assertEquals(
+        Map.of(tokenId1, Map.of(1L, receiver1, 2L, receiver2), tokenId2, Map.of(1L, receiver2)),
+        request.nftTransfers());
+
+    final Map<Long, AccountId> fiveTransfers = new LinkedHashMap<>();
+    final Map<Long, AccountId> sixTransfers = new LinkedHashMap<>();
+    LongStream.rangeClosed(1, 5).forEach(serial -> fiveTransfers.put(serial, receiver1));
+    LongStream.rangeClosed(1, 6).forEach(serial -> sixTransfers.put(serial, receiver1));
+    Assertions.assertDoesNotThrow(
+        () ->
+            NftApprovedTransferRequest.of(
+                Map.of(tokenId1, fiveTransfers, tokenId2, fiveTransfers),
+                owner,
+                spender,
+                spenderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                Map.of(tokenId1, fiveTransfers, tokenId2, sixTransfers),
+                owner,
+                spender,
+                spenderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftApprovedTransferRequest.of(Map.of(), owner, spender, spenderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(Map.of(tokenId1, Map.of()), owner, spender, spenderKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                Map.of(tokenId1, Map.of(0L, receiver1)), owner, spender, spenderKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftApprovedTransferRequest.of(null, owner, spender, spenderKey));
+    final Map<Long, AccountId> nullReceiver = new LinkedHashMap<>();
+    nullReceiver.put(1L, null);
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftApprovedTransferRequest.of(
+                Map.of(tokenId1, nullReceiver), owner, spender, spenderKey));
+  }
+
+  @Test
   void testHbarTransferRequestCreation() {
     final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
     final Duration transactionValidDuration = Duration.ofSeconds(120);
@@ -1750,6 +2275,166 @@ public class ProtocolLayerDataCreationTests {
     Assertions.assertThrows(
         IllegalArgumentException.class,
         () -> HbarAllowanceApproveRequest.of(owner, spender, Hbar.from(-1), ownerKey));
+  }
+
+  @Test
+  void testNftAllowanceApproveRequestCreation() {
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final AccountId owner = AccountId.fromString("0.0.5678");
+    final AccountId spender = AccountId.fromString("0.0.9876");
+    final TokenId tokenId = TokenId.fromString("0.0.12345");
+    final TokenId otherTokenId = TokenId.fromString("0.0.12346");
+    final List<Long> serialNumbers = List.of(1L, 2L);
+    final PrivateKey ownerKey = PrivateKey.generateECDSA();
+    final List<Long> maxSerials = LongStream.rangeClosed(1, 20).boxed().toList();
+    final List<Long> tooManySerials = LongStream.rangeClosed(1, 21).boxed().toList();
+    final List<TokenId> tooManyTokenIds =
+        LongStream.rangeClosed(1, 21).mapToObj(num -> new TokenId(0, 0, num)).toList();
+
+    Assertions.assertDoesNotThrow(
+        () ->
+            new NftAllowanceApproveRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                owner,
+                spender,
+                Map.of(tokenId, serialNumbers),
+                Set.of(otherTokenId),
+                ownerKey));
+    Assertions.assertDoesNotThrow(
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, serialNumbers, ownerKey));
+    Assertions.assertDoesNotThrow(
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, maxSerials, ownerKey));
+    Assertions.assertDoesNotThrow(
+        () ->
+            NftAllowanceApproveRequest.of(
+                owner,
+                spender,
+                Map.of(tokenId, serialNumbers, otherTokenId, List.of(3L)),
+                ownerKey));
+    Assertions.assertDoesNotThrow(
+        () -> NftAllowanceApproveRequest.forAllSerials(owner, spender, tokenId, ownerKey));
+    Assertions.assertDoesNotThrow(
+        () ->
+            NftAllowanceApproveRequest.forAllSerials(
+                owner, spender, List.of(tokenId, otherTokenId), ownerKey));
+
+    final NftAllowanceApproveRequest serialsRequest =
+        NftAllowanceApproveRequest.of(owner, spender, tokenId, serialNumbers, ownerKey);
+    Assertions.assertEquals(Map.of(tokenId, serialNumbers), serialsRequest.serialNumbers());
+    Assertions.assertEquals(Set.of(), serialsRequest.allSerialsTokenIds());
+    Assertions.assertEquals(
+        NftAllowanceApproveRequest.DEFAULT_ALLOWANCE_MAX_TRANSACTION_FEE,
+        serialsRequest.maxTransactionFee());
+    final NftAllowanceApproveRequest allSerialsRequest =
+        NftAllowanceApproveRequest.forAllSerials(owner, spender, tokenId, ownerKey);
+    Assertions.assertEquals(Map.of(), allSerialsRequest.serialNumbers());
+    Assertions.assertEquals(Set.of(tokenId), allSerialsRequest.allSerialsTokenIds());
+    Assertions.assertEquals(
+        NftAllowanceApproveRequest.DEFAULT_ALLOWANCE_MAX_TRANSACTION_FEE,
+        allSerialsRequest.maxTransactionFee());
+
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, owner, tokenId, serialNumbers, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, List.of(), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, List.of(-1L), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, List.of(0L), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, tooManySerials, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftAllowanceApproveRequest.of(
+                owner, spender, Map.of(tokenId, maxSerials, otherTokenId, List.of(21L)), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, Map.of(), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.forAllSerials(owner, spender, List.of(), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            NftAllowanceApproveRequest.forAllSerials(
+                owner, spender, List.of(tokenId, tokenId), ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> NftAllowanceApproveRequest.forAllSerials(owner, spender, tooManyTokenIds, ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new NftAllowanceApproveRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                owner,
+                spender,
+                Map.of(tokenId, serialNumbers),
+                Set.of(tokenId),
+                ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new NftAllowanceApproveRequest(
+                maxTransactionFee,
+                transactionValidDuration,
+                owner,
+                spender,
+                Map.of(tokenId, maxSerials),
+                Set.of(otherTokenId),
+                ownerKey));
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new NftAllowanceApproveRequest(
+                maxTransactionFee,
+                Duration.ZERO,
+                owner,
+                spender,
+                Map.of(tokenId, serialNumbers),
+                Set.of(),
+                ownerKey));
+
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.of(null, spender, tokenId, serialNumbers, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.of(owner, null, tokenId, serialNumbers, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftAllowanceApproveRequest.of(owner, spender, (TokenId) null, serialNumbers, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, null, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.of(owner, spender, tokenId, serialNumbers, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftAllowanceApproveRequest.of(
+                owner, spender, (Map<TokenId, List<Long>>) null, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.forAllSerials(owner, spender, tokenId, null));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () -> NftAllowanceApproveRequest.forAllSerials(owner, spender, (TokenId) null, ownerKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            NftAllowanceApproveRequest.forAllSerials(
+                owner, spender, (List<TokenId>) null, ownerKey));
   }
 
   @Test
@@ -1909,6 +2594,7 @@ public class ProtocolLayerDataCreationTests {
                 null,
                 null,
                 null,
+                null,
                 null));
     Assertions.assertDoesNotThrow(
         () -> TokenCreateRequest.of(name, symbol, treasuryAccountId, treasuryKey));
@@ -1922,6 +2608,23 @@ public class ProtocolLayerDataCreationTests {
                 tokenType,
                 supplyKey,
                 PrivateKey.generateECDSA()));
+    final PrivateKey feeScheduleKey = PrivateKey.generateECDSA();
+    final TokenCreateRequest withFeeScheduleKey =
+        TokenCreateRequest.of(
+            name,
+            symbol,
+            treasuryAccountId,
+            treasuryKey,
+            TokenType.NON_FUNGIBLE_UNIQUE,
+            supplyKey,
+            null,
+            null,
+            null,
+            null,
+            feeScheduleKey);
+    Assertions.assertEquals(feeScheduleKey, withFeeScheduleKey.feeScheduleKey());
+    Assertions.assertNull(
+        TokenCreateRequest.of(name, symbol, treasuryAccountId, treasuryKey).feeScheduleKey());
     Assertions.assertThrows(
         NullPointerException.class,
         () ->
@@ -1935,6 +2638,7 @@ public class ProtocolLayerDataCreationTests {
                 tokenType,
                 supplyKey,
                 treasuryKey,
+                null,
                 null,
                 null,
                 null,
@@ -1955,6 +2659,7 @@ public class ProtocolLayerDataCreationTests {
                 null,
                 null,
                 null,
+                null,
                 null));
     Assertions.assertThrows(
         NullPointerException.class,
@@ -1969,6 +2674,7 @@ public class ProtocolLayerDataCreationTests {
                 tokenType,
                 supplyKey,
                 treasuryKey,
+                null,
                 null,
                 null,
                 null,
@@ -1989,6 +2695,7 @@ public class ProtocolLayerDataCreationTests {
                 null,
                 null,
                 null,
+                null,
                 null));
     Assertions.assertThrows(
         NullPointerException.class,
@@ -2006,6 +2713,7 @@ public class ProtocolLayerDataCreationTests {
                 null,
                 null,
                 null,
+                null,
                 null));
     Assertions.assertThrows(
         NullPointerException.class,
@@ -2020,6 +2728,7 @@ public class ProtocolLayerDataCreationTests {
                 null,
                 supplyKey,
                 treasuryKey,
+                null,
                 null,
                 null,
                 null,
@@ -2065,6 +2774,102 @@ public class ProtocolLayerDataCreationTests {
     Assertions.assertThrows(NullPointerException.class, () -> new TokenDeleteResult(null, status));
     Assertions.assertThrows(
         NullPointerException.class, () -> new TokenDeleteResult(transactionId, null));
+  }
+
+  @Test
+  void testTokenFeeScheduleUpdateRequestCreation() {
+    // Given
+    final Hbar maxTransactionFee = Hbar.fromTinybars(1000);
+    final Duration transactionValidDuration = Duration.ofSeconds(120);
+    final TokenId tokenId = TokenId.fromString("0.0.12345");
+    final PrivateKey feeScheduleKey = PrivateKey.generateECDSA();
+    final List<CustomFee> customFees =
+        List.of(
+            new CustomRoyaltyFee()
+                .setNumerator(1)
+                .setDenominator(10)
+                .setFeeCollectorAccountId(AccountId.fromString("0.0.1001")));
+
+    // Then
+    Assertions.assertDoesNotThrow(
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, customFees, feeScheduleKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenFeeScheduleUpdateRequest.of(tokenId, customFees, feeScheduleKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenFeeScheduleUpdateRequest.of("0.0.12345", customFees, feeScheduleKey));
+    Assertions.assertDoesNotThrow(
+        () -> TokenFeeScheduleUpdateRequest.of(tokenId, List.of(), feeScheduleKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                null, transactionValidDuration, tokenId, customFees, feeScheduleKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                maxTransactionFee, null, tokenId, customFees, feeScheduleKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                maxTransactionFee, transactionValidDuration, null, customFees, feeScheduleKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, null, feeScheduleKey));
+    Assertions.assertThrows(
+        NullPointerException.class,
+        () ->
+            new TokenFeeScheduleUpdateRequest(
+                maxTransactionFee, transactionValidDuration, tokenId, customFees, null));
+  }
+
+  @Test
+  void testTokenFeeScheduleUpdateRequestRejectsTooManyFees() {
+    final TokenId tokenId = TokenId.fromString("0.0.12345");
+    final PrivateKey feeScheduleKey = PrivateKey.generateECDSA();
+    final List<CustomFee> tooManyFees =
+        LongStream.rangeClosed(1, TokenFeeScheduleUpdateRequest.MAX_CUSTOM_FEES + 1)
+            .<CustomFee>mapToObj(amount -> new CustomFixedFee().setHbarAmount(Hbar.from(amount)))
+            .toList();
+
+    Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> TokenFeeScheduleUpdateRequest.of(tokenId, tooManyFees, feeScheduleKey));
+  }
+
+  @Test
+  void testTokenFeeScheduleUpdateRequestCopiesFees() {
+    final TokenId tokenId = TokenId.fromString("0.0.12345");
+    final PrivateKey feeScheduleKey = PrivateKey.generateECDSA();
+    final List<CustomFee> customFees = new ArrayList<>();
+    customFees.add(new CustomFixedFee().setHbarAmount(Hbar.from(1)));
+
+    final TokenFeeScheduleUpdateRequest request =
+        TokenFeeScheduleUpdateRequest.of(tokenId, customFees, feeScheduleKey);
+    customFees.add(new CustomFixedFee().setHbarAmount(Hbar.from(2)));
+
+    Assertions.assertEquals(1, request.customFees().size());
+    Assertions.assertThrows(
+        UnsupportedOperationException.class, () -> request.customFees().add(new CustomFixedFee()));
+  }
+
+  @Test
+  void testTokenFeeScheduleUpdateResultCreation() {
+    // Given
+    final TransactionId transactionId = TransactionId.generate(new AccountId(0, 0, 12345));
+    final Status status = Status.SUCCESS;
+
+    // Then
+    Assertions.assertDoesNotThrow(() -> new TokenFeeScheduleUpdateResult(transactionId, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new TokenFeeScheduleUpdateResult(null, status));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> new TokenFeeScheduleUpdateResult(transactionId, null));
   }
 
   @Test

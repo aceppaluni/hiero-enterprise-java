@@ -89,8 +89,11 @@ public class HieroAutoConfiguration {
 
   @Bean
   SmartContractClient smartContractClient(
-      final ProtocolLayerClient protocolLayerClient, FileClient fileClient) {
-    return new SmartContractClientImpl(protocolLayerClient, fileClient);
+      final ProtocolLayerClient protocolLayerClient,
+      FileClient fileClient,
+      final HieroContext hieroContext) {
+    return new SmartContractClientImpl(
+        protocolLayerClient, fileClient, hieroContext.getOperatorAccount());
   }
 
   @Bean
@@ -162,7 +165,8 @@ public class HieroAutoConfiguration {
       throw new IllegalArgumentException(
           "Error parsing mirrorNodeEndpoint '" + mirrorNodeEndpoint + "'", e);
     }
-    RestClient.Builder builder = RestClient.builder().baseUrl(baseUri);
+    final RestClient.Builder builder = RestClient.builder().baseUrl(baseUri);
+    ;
     Optional<String> mirrorNodeJavaRest =
         Optional.ofNullable(properties.getNetwork().getMirrorNodeJavaRest())
             .filter(s -> !s.isBlank());
@@ -241,7 +245,8 @@ public class HieroAutoConfiguration {
 
   @Bean
   ContractVerificationClient contractVerificationClient(final HieroConfig hieroConfig) {
-    return new ContractVerificationClientImplementation(hieroConfig);
+    final RestClient.Builder builder = RestClient.builder();
+    return new ContractVerificationClientImplementation(hieroConfig, builder);
   }
 
   @Bean

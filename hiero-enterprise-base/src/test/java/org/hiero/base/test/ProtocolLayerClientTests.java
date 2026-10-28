@@ -95,13 +95,25 @@ public class ProtocolLayerClientTests {
     Assertions.assertThrows(
         NullPointerException.class, () -> client.executeTransferTransaction(null));
     Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeNftApprovedTransferTransaction(null));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeTokenAirdropTransaction(null));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeTokenCancelAirdropTransaction(null));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeTokenRejectTransaction(null));
+    Assertions.assertThrows(
         NullPointerException.class, () -> client.executeTokenGrantKycTransaction(null));
     Assertions.assertThrows(
         NullPointerException.class, () -> client.executeTokenRevokeKycTransaction(null));
     Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeTokenFeeScheduleUpdateTransaction(null));
+    Assertions.assertThrows(
         NullPointerException.class, () -> client.executeHbarTransferTransaction(null));
     Assertions.assertThrows(
         NullPointerException.class, () -> client.executeHbarAllowanceApproveTransaction(null));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> client.executeNftAllowanceApproveTransaction(null));
     Assertions.assertThrows(
         NullPointerException.class, () -> client.executeNftAllowanceDeleteTransaction(null));
     Assertions.assertThrows(

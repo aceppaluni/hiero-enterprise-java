@@ -24,19 +24,23 @@ import com.hedera.hashgraph.sdk.FileInfoQuery;
 import com.hedera.hashgraph.sdk.FileUpdateTransaction;
 import com.hedera.hashgraph.sdk.HookStoreTransaction;
 import com.hedera.hashgraph.sdk.NftId;
+import com.hedera.hashgraph.sdk.PendingAirdropId;
 import com.hedera.hashgraph.sdk.PrivateKey;
 import com.hedera.hashgraph.sdk.PublicKey;
 import com.hedera.hashgraph.sdk.Query;
 import com.hedera.hashgraph.sdk.SubscriptionHandle;
+import com.hedera.hashgraph.sdk.TokenAirdropTransaction;
 import com.hedera.hashgraph.sdk.TokenAssociateTransaction;
 import com.hedera.hashgraph.sdk.TokenBurnTransaction;
+import com.hedera.hashgraph.sdk.TokenCancelAirdropTransaction;
 import com.hedera.hashgraph.sdk.TokenCreateTransaction;
 import com.hedera.hashgraph.sdk.TokenDeleteTransaction;
 import com.hedera.hashgraph.sdk.TokenDissociateTransaction;
+import com.hedera.hashgraph.sdk.TokenFeeScheduleUpdateTransaction;
 import com.hedera.hashgraph.sdk.TokenFreezeTransaction;
 import com.hedera.hashgraph.sdk.TokenGrantKycTransaction;
 import com.hedera.hashgraph.sdk.TokenMintTransaction;
-import com.hedera.hashgraph.sdk.TokenPauseTransaction;
+import com.hedera.hashgraph.sdk.TokenRejectTransaction;
 import com.hedera.hashgraph.sdk.TokenRevokeKycTransaction;
 import com.hedera.hashgraph.sdk.TokenUnfreezeTransaction;
 import com.hedera.hashgraph.sdk.TokenUnpauseTransaction;
@@ -49,6 +53,7 @@ import com.hedera.hashgraph.sdk.TopicMessageQuery;
 import com.hedera.hashgraph.sdk.TopicMessageSubmitTransaction;
 import com.hedera.hashgraph.sdk.TopicUpdateTransaction;
 import com.hedera.hashgraph.sdk.Transaction;
+import com.hedera.hashgraph.sdk.TransactionId;
 import com.hedera.hashgraph.sdk.TransactionReceipt;
 import com.hedera.hashgraph.sdk.TransactionRecord;
 import com.hedera.hashgraph.sdk.TransactionResponse;
@@ -100,26 +105,36 @@ import org.hiero.base.protocol.data.HbarTransferRequest;
 import org.hiero.base.protocol.data.HbarTransferResult;
 import org.hiero.base.protocol.data.HookStoreRequest;
 import org.hiero.base.protocol.data.HookStoreResult;
+import org.hiero.base.protocol.data.NftAllowanceApproveRequest;
+import org.hiero.base.protocol.data.NftAllowanceApproveResult;
 import org.hiero.base.protocol.data.NftAllowanceDeleteRequest;
 import org.hiero.base.protocol.data.NftAllowanceDeleteResult;
+import org.hiero.base.protocol.data.NftApprovedTransferRequest;
+import org.hiero.base.protocol.data.NftApprovedTransferResult;
+import org.hiero.base.protocol.data.TokenAirdropRequest;
+import org.hiero.base.protocol.data.TokenAirdropResult;
 import org.hiero.base.protocol.data.TokenAssociateRequest;
 import org.hiero.base.protocol.data.TokenAssociateResult;
 import org.hiero.base.protocol.data.TokenBurnRequest;
 import org.hiero.base.protocol.data.TokenBurnResult;
+import org.hiero.base.protocol.data.TokenCancelAirdropRequest;
+import org.hiero.base.protocol.data.TokenCancelAirdropResult;
 import org.hiero.base.protocol.data.TokenCreateRequest;
 import org.hiero.base.protocol.data.TokenCreateResult;
 import org.hiero.base.protocol.data.TokenDeleteRequest;
 import org.hiero.base.protocol.data.TokenDeleteResult;
 import org.hiero.base.protocol.data.TokenDissociateRequest;
 import org.hiero.base.protocol.data.TokenDissociateResult;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateRequest;
+import org.hiero.base.protocol.data.TokenFeeScheduleUpdateResult;
 import org.hiero.base.protocol.data.TokenFreezeRequest;
 import org.hiero.base.protocol.data.TokenFreezeResult;
 import org.hiero.base.protocol.data.TokenGrantKycRequest;
 import org.hiero.base.protocol.data.TokenGrantKycResult;
 import org.hiero.base.protocol.data.TokenMintRequest;
 import org.hiero.base.protocol.data.TokenMintResult;
-import org.hiero.base.protocol.data.TokenPauseRequest;
-import org.hiero.base.protocol.data.TokenPauseResult;
+import org.hiero.base.protocol.data.TokenRejectRequest;
+import org.hiero.base.protocol.data.TokenRejectResult;
 import org.hiero.base.protocol.data.TokenRevokeKycRequest;
 import org.hiero.base.protocol.data.TokenRevokeKycResult;
 import org.hiero.base.protocol.data.TokenTransferRequest;
@@ -347,6 +362,12 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
             .setBytecodeFileId(request.fileId())
             .setGas(request.gas())
             .setConstructorParameters(constructorParams);
+
+    if (request.adminKey() != null) {
+      transaction.setAdminKey(request.adminKey());
+    }
+
+    sign(transaction, request.adminKey());
     final TransactionReceipt receipt =
         executeTransactionAndWaitOnReceipt(transaction, TransactionType.CONTRACT_CREATE);
     return new ContractCreateResult(receipt.transactionId, receipt.status, receipt.contractId);
@@ -367,6 +388,8 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
     if (request.transferFeeToAccountId() != null) {
       transaction.setTransferAccountId(request.transferFeeToAccountId());
     }
+
+    sign(transaction, request.adminKey());
     final TransactionReceipt receipt =
         executeTransactionAndWaitOnReceipt(transaction, TransactionType.CONTRACT_DELETE);
     return new ContractDeleteResult(receipt.transactionId, receipt.status);
@@ -630,6 +653,9 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
       if (request.kycKey() != null) {
         transaction.setKycKey(request.kycKey());
       }
+      if (request.feeScheduleKey() != null) {
+        transaction.setFeeScheduleKey(request.feeScheduleKey());
+      }
       sign(transaction, request.treasuryKey(), request.supplyKey(), request.adminKey());
       final TransactionReceipt receipt =
           executeTransactionAndWaitOnReceipt(transaction, TransactionType.TOKEN_CREATE);
@@ -680,6 +706,27 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
       return new TokenUpdateResult(receipt.transactionId, receipt.status);
     } catch (final Exception e) {
       throw new HieroException("Failed to execute update token transaction", e);
+    }
+  }
+
+  @Override
+  public TokenFeeScheduleUpdateResult executeTokenFeeScheduleUpdateTransaction(
+      @NonNull final TokenFeeScheduleUpdateRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final TokenFeeScheduleUpdateTransaction transaction =
+          new TokenFeeScheduleUpdateTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration())
+              .setTokenId(request.tokenId())
+              .setCustomFees(request.customFees());
+      sign(transaction, request.feeScheduleKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(
+              transaction, TransactionType.TOKEN_FEE_SCHEDULE_UPDATE);
+      return new TokenFeeScheduleUpdateResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute token fee schedule update transaction", e);
     }
   }
 
@@ -971,6 +1018,103 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
   }
 
   @Override
+  public NftApprovedTransferResult executeNftApprovedTransferTransaction(
+      @NonNull final NftApprovedTransferRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      // The network treats the transaction payer as the spender of an approved transfer.
+      final TransferTransaction transaction =
+          new TransferTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration())
+              .setTransactionId(TransactionId.generate(request.spender()));
+      request
+          .nftTransfers()
+          .forEach(
+              (tokenId, serialToReceiver) ->
+                  serialToReceiver.forEach(
+                      (serial, receiver) ->
+                          transaction.addApprovedNftTransfer(
+                              tokenId.nft(serial), request.owner(), receiver)));
+      sign(transaction, request.spenderKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.CRYPTO_TRANSFER);
+      return new NftApprovedTransferResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute approved NFT transfer transaction", e);
+    }
+  }
+
+  @Override
+  public TokenAirdropResult executeTokenAirdropTransaction(
+      @NonNull final TokenAirdropRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final TokenAirdropTransaction transaction =
+          new TokenAirdropTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration());
+      request
+          .serialToReceiver()
+          .forEach(
+              (serial, receiver) ->
+                  transaction.addNftTransfer(
+                      request.tokenId().nft(serial), request.sender(), receiver));
+      sign(transaction, request.senderKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.TOKEN_AIRDROP);
+      return new TokenAirdropResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute token airdrop transaction", e);
+    }
+  }
+
+  @Override
+  public TokenCancelAirdropResult executeTokenCancelAirdropTransaction(
+      @NonNull final TokenCancelAirdropRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final TokenCancelAirdropTransaction transaction =
+          new TokenCancelAirdropTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration());
+      request
+          .serialToReceiver()
+          .forEach(
+              (serial, receiver) ->
+                  transaction.addPendingAirdrop(
+                      new PendingAirdropId(
+                          request.sender(), receiver, request.tokenId().nft(serial))));
+      sign(transaction, request.senderKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.TOKEN_CANCEL_AIRDROP);
+      return new TokenCancelAirdropResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute token cancel airdrop transaction", e);
+    }
+  }
+
+  @Override
+  public TokenRejectResult executeTokenRejectTransaction(@NonNull final TokenRejectRequest request)
+      throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final TokenRejectTransaction transaction =
+          new TokenRejectTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration())
+              .setOwnerId(request.owner())
+              .setNftIds(request.serials().stream().map(request.tokenId()::nft).toList());
+      sign(transaction, request.ownerKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.TOKEN_REJECT);
+      return new TokenRejectResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute token reject transaction", e);
+    }
+  }
+
+  @Override
   public HbarTransferResult executeHbarTransferTransaction(
       @NonNull final HbarTransferRequest request) throws HieroException {
     Objects.requireNonNull(request, "request must not be null");
@@ -1006,6 +1150,40 @@ public class ProtocolLayerClientImpl implements ProtocolLayerClient {
       return new HbarAllowanceApproveResult(receipt.transactionId, receipt.status);
     } catch (final Exception e) {
       throw new HieroException("Failed to execute HBAR allowance approve transaction", e);
+    }
+  }
+
+  @Override
+  public NftAllowanceApproveResult executeNftAllowanceApproveTransaction(
+      @NonNull final NftAllowanceApproveRequest request) throws HieroException {
+    Objects.requireNonNull(request, "request must not be null");
+    try {
+      final AccountAllowanceApproveTransaction transaction =
+          new AccountAllowanceApproveTransaction()
+              .setMaxTransactionFee(request.maxTransactionFee())
+              .setTransactionValidDuration(request.transactionValidDuration());
+      request
+          .serialNumbers()
+          .forEach(
+              (tokenId, serialNumbers) ->
+                  serialNumbers.forEach(
+                      serialNumber ->
+                          transaction.approveTokenNftAllowance(
+                              new NftId(tokenId, serialNumber),
+                              request.owner(),
+                              request.spender())));
+      request
+          .allSerialsTokenIds()
+          .forEach(
+              tokenId ->
+                  transaction.approveTokenNftAllowanceAllSerials(
+                      tokenId, request.owner(), request.spender()));
+      sign(transaction, request.ownerKey());
+      final TransactionReceipt receipt =
+          executeTransactionAndWaitOnReceipt(transaction, TransactionType.ALLOWANCE_APPROVAL);
+      return new NftAllowanceApproveResult(receipt.transactionId, receipt.status);
+    } catch (final Exception e) {
+      throw new HieroException("Failed to execute NFT allowance approve transaction", e);
     }
   }
 
