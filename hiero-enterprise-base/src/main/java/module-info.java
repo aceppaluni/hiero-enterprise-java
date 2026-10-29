@@ -29,4 +29,5 @@ module org.hiero.base {
   requires com.google.auto.service;
   requires core; // Web3j SDK
   requires abi; // Web3j SDK
+  requires tools.jackson.databind;
 }
